@@ -12,6 +12,7 @@
 
 API_BASE_URL="${API_BASE_URL:-http://localhost:8080}"
 VERBOSE=false
+API_TOKEN=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -64,14 +65,20 @@ make_curl_request() {
     local method="$2"
     local data="$3"
     local content_type="application/json"
+    local auth_header=()
+
+    if [[ -n "$API_TOKEN" ]]; then
+        auth_header=(-H "Authorization: Bearer $API_TOKEN")
+    fi
     
     if [[ -n "$data" ]]; then
         curl -s -w "\n%{http_code}" -X "$method" \
              -H "Content-Type: $content_type" \
+             "${auth_header[@]}" \
              -d "$data" \
              "$url"
     else
-        curl -s -w "\n%{http_code}" -X "$method" "$url"
+        curl -s -w "\n%{http_code}" -X "$method" "${auth_header[@]}" "$url"
     fi
 }
 
@@ -113,6 +120,40 @@ test_api_root() {
         print_result "API Root" "false" "API root returned status $http_code" "$json_data"
         return 1
     fi
+}
+
+test_unauthorized_access() {
+    echo -e "${BLUE}Testing GET /students without a token...${NC}"
+
+    local response=$(make_curl_request "$API_BASE_URL/students" "GET")
+    local http_code=$(extract_http_code "$response")
+    local json_data=$(extract_json_data "$response")
+
+    if [[ "$http_code" == "401" ]] && echo "$json_data" | grep -q '"error":'; then
+        print_result "Unauthorized Access" "true" "Correctly returned 401" "$json_data"
+        return 0
+    fi
+    print_result "Unauthorized Access" "false" "Expected 401, got $http_code" "$json_data"
+    return 1
+}
+
+test_login() {
+    echo -e "${BLUE}Testing POST /login...${NC}"
+
+    local response=$(curl -s -w "\n%{http_code}" -X POST \
+        -H "Content-Type: application/json" \
+        -d '{"username":"john","password":"Secret123"}' \
+        "$API_BASE_URL/login")
+    local http_code=$(extract_http_code "$response")
+    local json_data=$(extract_json_data "$response")
+    API_TOKEN=$(echo "$json_data" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+    if [[ "$http_code" == "200" && -n "$API_TOKEN" ]]; then
+        print_result "Login" "true" "Received a bearer token" "$json_data"
+        return 0
+    fi
+    print_result "Login" "false" "Login did not return a bearer token (HTTP $http_code)" "$json_data"
+    return 1
 }
 
 # Test 2.1: Get All Students
@@ -449,7 +490,11 @@ test_incomplete_put() {
 make_curl_request_with_headers() {
     local url="$1"
     local method="$2"
-    curl -s -i -X "$method" "$url"
+    local auth_header=()
+    if [[ -n "$API_TOKEN" ]]; then
+        auth_header=(-H "Authorization: Bearer $API_TOKEN")
+    fi
+    curl -s -i -X "$method" "${auth_header[@]}" "$url"
 }
 
 # Test 3.4: Method Not Allowed on an item path (expects an Allow header)
@@ -522,6 +567,18 @@ run_all_tests() {
     # Test 2: API root
     ((total_tests++))
     if test_api_root; then
+        ((passed_tests++))
+    fi
+    echo ""
+
+    ((total_tests++))
+    if test_unauthorized_access; then
+        ((passed_tests++))
+    fi
+    echo ""
+
+    ((total_tests++))
+    if test_login; then
         ((passed_tests++))
     fi
     echo ""

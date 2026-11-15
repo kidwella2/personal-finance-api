@@ -60,6 +60,14 @@
     <p>Check your localhost matches API_BASE. Always access via <code>http://localhost:8080/student_api_test.html</code>.</p>
 
     <div class="test-section">
+        <h3>Login</h3>
+        <input type="text" id="login-username" placeholder="Username" value="john">
+        <input type="password" id="login-password" placeholder="Password" value="Secret123">
+        <button onclick="login()">POST /login</button>
+        <pre id="login-result"></pre>
+    </div>
+
+    <div class="test-section">
         <h3>1. Get All Students</h3>
         <button onclick="getAllStudents()">GET /students</button>
         <pre id="all-students-result"></pre>
@@ -102,6 +110,32 @@
 
     <script>
         const API_BASE = 'http://localhost:8080';
+        let apiToken = '';
+
+        async function login() {
+            const resultEl = document.getElementById('login-result');
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('login-username').value,
+                        password: document.getElementById('login-password').value
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    apiToken = '';
+                    resultEl.textContent = `HTTP ${response.status}: ${JSON.stringify(data, null, 2)}`;
+                    return;
+                }
+                apiToken = data.token;
+                resultEl.textContent = `Login successful. Use this token for student requests:\nBearer ${apiToken}`;
+            } catch (error) {
+                apiToken = '';
+                resultEl.textContent = 'Login request failed: ' + error.message;
+            }
+        }
 
         if (window.location.protocol === 'file:') {
             document.getElementById('file-protocol-warning').style.display = 'block';
@@ -113,7 +147,9 @@
         async function getAllStudents() {
             const resultEl = document.getElementById('all-students-result');
             try {
-                const response = await fetch(`${API_BASE}/students`);
+                const response = await fetch(`${API_BASE}/students`, {
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
                 const data = await response.json();
                 const prefix = response.ok ? '' : `HTTP ${response.status}: `;
                 resultEl.textContent = prefix + JSON.stringify(data, null, 2);
@@ -126,7 +162,9 @@
             const id = document.getElementById('get-student-id').value;
             const resultEl = document.getElementById('single-student-result');
             try {
-                const response = await fetch(`${API_BASE}/students/${id}`);
+                const response = await fetch(`${API_BASE}/students/${id}`, {
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
                 const data = await response.json();
                 const prefix = response.ok ? '' : `HTTP ${response.status}: `;
                 resultEl.textContent = prefix + JSON.stringify(data, null, 2);
@@ -149,6 +187,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {})
                     },
                     body: JSON.stringify(studentData)
                 });
@@ -175,6 +214,7 @@
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {})
                     },
                     body: JSON.stringify(updateData)
                 });
@@ -191,7 +231,8 @@
             const resultEl = document.getElementById('delete-student-result');
             try {
                 const response = await fetch(`${API_BASE}/students/${id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
                 });
                 const data = await response.json();
                 const prefix = response.ok ? '' : `HTTP ${response.status}: `;

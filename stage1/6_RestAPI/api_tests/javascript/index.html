@@ -72,6 +72,12 @@
             <p><strong>Note:</strong> Make sure your PHP API server is running on port 8080</p>
             <input type="text" id="apiUrl" value="http://localhost:8080" placeholder="API Base URL">
             <button onclick="updateBaseUrl()">Update URL</button>
+            <p>
+                <input type="text" id="apiUsername" value="john" placeholder="Username">
+                <input type="password" id="apiPassword" placeholder="Password">
+                <button onclick="loginForApiTests()">Log in</button>
+            </p>
+            <div id="auth-result"></div>
         </div>
     </div>
 
@@ -143,13 +149,39 @@
     <script>
         // Global variable for API base URL
         let API_BASE_URL = 'http://localhost:8080';
+        let apiToken = '';
 
         // Update base URL function
         function updateBaseUrl() {
             const newUrl = document.getElementById('apiUrl').value;
             API_BASE_URL = newUrl;
+            apiToken = '';
             document.getElementById('baseUrl').textContent = newUrl;
             displayResult('connection-result', 'info', `Updated API base URL to: ${newUrl}`);
+        }
+
+        async function loginForApiTests() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('apiUsername').value,
+                        password: document.getElementById('apiPassword').value
+                    })
+                });
+                const data = await response.json();
+                if (response.ok && typeof data.token === 'string') {
+                    apiToken = data.token;
+                    displayResult('auth-result', 'pass', 'Login successful. Token will be attached to requests.');
+                    return;
+                }
+                apiToken = '';
+                displayResult('auth-result', 'fail', `Login failed: HTTP ${response.status}`, data);
+            } catch (error) {
+                apiToken = '';
+                displayResult('auth-result', 'fail', 'Login request failed', { error: error.message });
+            }
         }
 
         // Helper function to display test results
@@ -172,6 +204,10 @@
                         'Content-Type': 'application/json',
                     }
                 };
+
+                if (apiToken) {
+                    options.headers.Authorization = `Bearer ${apiToken}`;
+                }
 
                 if (data) {
                     options.body = JSON.stringify(data);

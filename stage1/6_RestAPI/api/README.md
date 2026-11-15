@@ -18,6 +18,13 @@ HTTP Request ───► index.php ──┤
 | `POST` | `/students` | Create new student | `{"name": "...", "email": "...", "major": "...", "year": 1}` |
 | `PUT` | `/students/{id}` | Replace existing student | All 4 fields required |
 | `DELETE` | `/students/{id}` | Delete student by ID | None |
+| `POST` | `/login` | Exchange demo credentials for a bearer token | `{"username": "john", "password": "Secret123"}` |
+
+All `/students` endpoints require `Authorization: Bearer <token>`. Login reuses
+the classroom bearer demo accounts `john` / `Secret123` and `admin` / `Admin123`
+and returns the fixed demo tokens `john-demo-token` and `admin-demo-token`.
+This is only a local learning example: tokens do not expire, even though the
+response includes the demo `expires_in` field.
 
 ---
 
@@ -108,6 +115,28 @@ When finished working, stop the development server and background database servi
 ## 3. Testing the API
 
 Once the server is running at `http://localhost:8080`, test endpoints using either the browser UI or the automated test suite.
+
+To log in directly, send:
+
+```bash
+curl -X POST http://localhost:8080/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"john","password":"Secret123"}'
+```
+
+Use the returned `token` value on later requests:
+
+```bash
+curl http://localhost:8080/students \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+When using NGINX with PHP-FPM, forward the Authorization header inside the PHP
+location so PHP can validate the bearer token:
+
+```nginx
+fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+```
 
 ### Option A: Web Test UI (Browser)
 Open the visual test page in your web browser:

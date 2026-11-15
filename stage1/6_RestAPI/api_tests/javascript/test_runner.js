@@ -14,6 +14,7 @@ const https = require('https');
 
 // Configuration
 const API_BASE_URL = 'http://localhost:8080';
+let apiToken = '';
 const COLORS = {
     RESET: '\x1b[0m',
     RED: '\x1b[31m',
@@ -28,14 +29,19 @@ const COLORS = {
 function makeRequest(url, method = 'GET', data = null, rawData = false) {
     return new Promise((resolve, reject) => {
         const urlObj = new URL(url);
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (apiToken) {
+            headers.Authorization = `Bearer ${apiToken}`;
+        }
+
         const options = {
             hostname: urlObj.hostname,
             port: urlObj.port,
             path: urlObj.pathname + urlObj.search,
             method: method,
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers
         };
 
         let requestBody = null;
@@ -117,6 +123,44 @@ async function testServerConnection() {
         }
     } catch (error) {
         printResult('Server Connection', false, `Connection failed: ${error.error}`, error);
+        return false;
+    }
+}
+
+async function testUnauthenticatedAccess() {
+    console.log(`${COLORS.BLUE}Testing GET /students without a token...${COLORS.RESET}`);
+
+    try {
+        const result = await makeRequest(`${API_BASE_URL}/students`);
+        if (result.status === 401 && result.data && result.data.error) {
+            printResult('Unauthorized Access', true, 'Correctly returned 401', result.data);
+            return true;
+        }
+        printResult('Unauthorized Access', false, `Expected 401, got ${result.status}`, result.data);
+        return false;
+    } catch (error) {
+        printResult('Unauthorized Access', false, `Request failed: ${error.error}`, error);
+        return false;
+    }
+}
+
+async function testLogin() {
+    console.log(`${COLORS.BLUE}Testing POST /login...${COLORS.RESET}`);
+
+    try {
+        const result = await makeRequest(`${API_BASE_URL}/login`, 'POST', {
+            username: 'john',
+            password: 'Secret123'
+        });
+        if (result.status === 200 && typeof result.data.token === 'string') {
+            apiToken = result.data.token;
+            printResult('Login', true, 'Received a bearer token', result.data);
+            return true;
+        }
+        printResult('Login', false, `Expected a bearer token, got ${result.status}`, result.data);
+        return false;
+    } catch (error) {
+        printResult('Login', false, `Request failed: ${error.error}`, error);
         return false;
     }
 }
@@ -449,6 +493,18 @@ async function runAllTests() {
         passedTests++;
     }
     console.log('');
+
+    totalTests++;
+    if (await testUnauthenticatedAccess()) {
+        passedTests++;
+    }
+    console.log('');
+
+    totalTests++;
+    if (await testLogin()) {
+        passedTests++;
+    }
+    console.log('');
     
     // Test 2: Get all students
     totalTests++;
@@ -573,6 +629,8 @@ if (require.main === module) {
 module.exports = {
     makeRequest,
     testServerConnection,
+    testUnauthenticatedAccess,
+    testLogin,
     testGetAllStudents,
     testGetSingleStudent,
     testCreateStudent,

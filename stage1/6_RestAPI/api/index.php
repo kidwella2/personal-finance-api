@@ -18,6 +18,7 @@ $storage = getenv('STUDENT_STORAGE') ?: 'json';
 require_once $storage === 'pdo'
     ? __DIR__ . '/handlers_pdo.php'
     : __DIR__ . '/handlers.php';
+require_once __DIR__ . '/../../7_Security/Basics/bearer/bearer_auth.php';
 
 // Set JSON response header
 header('Content-Type: application/json');
@@ -64,9 +65,20 @@ if (empty($resource)) {
             'GET /students/{id}' => 'Get student by ID',
             'POST /students' => 'Create new student',
             'PUT /students/{id}' => 'Update student',
-            'DELETE /students/{id}' => 'Delete student'
+            'DELETE /students/{id}' => 'Delete student',
+            'POST /login' => 'Get a bearer token'
         ]
     ]);
+    exit;
+}
+
+if ($resource === 'login') {
+    if (count($segments) !== 1) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Resource not found']);
+        exit;
+    }
+    require __DIR__ . '/login.php';
     exit;
 }
 
@@ -102,6 +114,8 @@ if (!in_array($method, $allowed)) {
     echo json_encode(['success' => false, 'error' => 'Method not allowed']);
     exit;
 }
+
+requireAuth();
 
 switch ($method) {
     case 'GET':
