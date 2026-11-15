@@ -60,7 +60,7 @@
     <p>Check your localhost matches API_BASE. Always access via <code>http://localhost:8080/finance_api_test.html</code>.</p>
 
     <div class="test-section">
-        <h3>Login</h3>
+        <h3>1. Login</h3>
         <input type="text" id="login-username" placeholder="Username" value="john">
         <input type="password" id="login-password" placeholder="Password" value="Secret123">
         <button onclick="login()">POST /login</button>
@@ -68,20 +68,20 @@
     </div>
 
     <div class="test-section">
-        <h3>1. Get All Students</h3>
+        <h3>2. Get All Students</h3>
         <button onclick="getAllStudents()">GET /students</button>
         <pre id="all-students-result"></pre>
     </div>
 
     <div class="test-section">
-        <h3>2. Get Single Student</h3>
+        <h3>3. Get Single Student</h3>
         <input type="number" id="get-student-id" placeholder="Student ID" value="1">
         <button onclick="getStudent()">GET /students/{id}</button>
         <pre id="single-student-result"></pre>
     </div>
 
     <div class="test-section">
-        <h3>3. Create New Student</h3>
+        <h3>4. Create New Student</h3>
         <input type="text" id="new-name" placeholder="Name" value="David Wilson"><br>
         <input type="email" id="new-email" placeholder="Email" value="david.wilson@university.edu"><br>
         <input type="text" id="new-major" placeholder="Major" value="Computer Science"><br>
@@ -91,7 +91,7 @@
     </div>
 
     <div class="test-section">
-        <h3>4. Update Student</h3>
+        <h3>5. Update Student</h3>
         <input type="number" id="update-student-id" placeholder="Student ID" value="1"><br>
         <input type="text" id="update-name" placeholder="New Name" value="Alice Smith"><br>
         <input type="email" id="update-email" placeholder="New Email" value="alice.smith@university.edu"><br>
@@ -102,24 +102,45 @@
     </div>
 
     <div class="test-section">
-        <h3>5. Delete Student</h3>
+        <h3>6. Delete Student</h3>
         <input type="number" id="delete-student-id" placeholder="Student ID" value="3">
         <button onclick="deleteStudent()">DELETE /students/{id}</button>
         <pre id="delete-student-result"></pre>
     </div>
 
     <div class="test-section">
-        <h3>6. Get Current Budget</h3>
+        <h3>7. Get Current Budget</h3>
         <button onclick="getCurrentBudget()">GET /budgets/current</button>
         <pre id="current-budget-result"></pre>
     </div>
 
     <div class="test-section">
-        <h3>7. Replace Current Budget</h3>
+        <h3>8. Replace Current Budget</h3>
         <input type="month" id="budget-month"><br>
         <input type="number" id="budget-amount" placeholder="3000" value="3000" step="any"><br>
         <button onclick="putCurrentBudget()">PUT /budgets/current</button>
         <pre id="update-budget-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h3>9. Get Recurring Items</h3>
+        <button onclick="getRecurringItems()">GET /budgets/recurring-items</button>
+        <pre id="recurring-items-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h3>10. Create Recurring Item</h3>
+        <input type="text" id="recurring-item-name" placeholder="Name" value="electric"><br>
+        <input type="number" id="recurring-item-amount" placeholder="100" value="100" min="1" step="1"><br>
+        <button onclick="createRecurringItem()">POST /budgets/recurring-items</button>
+        <pre id="create-recurring-item-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h3>11. Delete Recurring Item</h3>
+        <input type="number" id="delete-recurring-item-id" placeholder="Item ID" value="1">
+        <button onclick="deleteRecurringItem()">DELETE /budgets/recurring-items/{id}</button>
+        <pre id="delete-recurring-item-result"></pre>
     </div>
 
     <script>
@@ -146,7 +167,7 @@
                     return;
                 }
                 apiToken = data.token;
-                resultEl.textContent = `Login successful. Use this token for student requests:\nBearer ${apiToken}`;
+                resultEl.textContent = `Login successful. Use this token for API requests:\nBearer ${apiToken}`;
             } catch (error) {
                 apiToken = '';
                 resultEl.textContent = 'Login request failed: ' + error.message;
@@ -189,6 +210,62 @@
                     },
                     body: JSON.stringify(budgetData)
                 });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
+        async function getRecurringItems() {
+            const resultEl = document.getElementById('recurring-items-result');
+            try {
+                const response = await fetch(`${API_BASE}/budgets/recurring-items`, {
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
+        async function createRecurringItem() {
+            const resultEl = document.getElementById('create-recurring-item-result');
+            try {
+                const response = await fetch(`${API_BASE}/budgets/recurring-items`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {})
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('recurring-item-name').value,
+                        amount: Number(document.getElementById('recurring-item-amount').value)
+                    })
+                });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
+        async function deleteRecurringItem() {
+            const id = document.getElementById('delete-recurring-item-id').value;
+            const resultEl = document.getElementById('delete-recurring-item-result');
+            try {
+                const response = await fetch(`${API_BASE}/budgets/recurring-items/${id}`, {
+                    method: 'DELETE',
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
+                if (response.status === 204) {
+                    resultEl.textContent = 'HTTP 204: Recurring item deleted';
+                    return;
+                }
                 const data = await response.json();
                 const prefix = response.ok ? '' : `HTTP ${response.status}: `;
                 resultEl.textContent = prefix + JSON.stringify(data, null, 2);

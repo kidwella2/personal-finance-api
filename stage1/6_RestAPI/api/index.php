@@ -68,6 +68,9 @@ if (empty($resource)) {
             'DELETE /students/{id}' => 'Delete student',
             'GET /budgets/current' => 'Get the current monthly budget',
             'PUT /budgets/current' => 'Create or replace the current monthly budget',
+            'GET /budgets/recurring-items' => 'Get recurring budget items',
+            'POST /budgets/recurring-items' => 'Create a recurring budget item',
+            'DELETE /budgets/recurring-items/{id}' => 'Delete a recurring budget item',
             'POST /login' => 'Get a bearer token'
         ]
     ]);
@@ -85,21 +88,36 @@ if ($resource === 'login') {
 }
 
 if ($resource === 'budgets') {
-    if (count($segments) !== 2 || $segments[1] !== 'current') {
+    $recurring_item_id = null;
+    if (count($segments) === 2 && $segments[1] === 'current') {
+        $allowed = ['GET', 'PUT'];
+        $budget_handler = 'budgets.php';
+    } elseif (count($segments) >= 2 && count($segments) <= 3 && $segments[1] === 'recurring-items') {
+        if (count($segments) === 3) {
+            if (!ctype_digit($segments[2])) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Invalid recurring item ID']);
+                exit;
+            }
+            $recurring_item_id = (int)$segments[2];
+        }
+        $allowed = $recurring_item_id === null ? ['GET', 'POST'] : ['DELETE'];
+        $budget_handler = 'recurring_items.php';
+    } else {
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'Resource not found']);
         exit;
     }
 
-    if (!in_array($method, ['GET', 'PUT'])) {
-        header('Allow: GET, PUT');
+    if (!in_array($method, $allowed)) {
+        header('Allow: ' . implode(', ', $allowed));
         http_response_code(405);
         echo json_encode(['success' => false, 'error' => 'Method not allowed']);
         exit;
     }
 
     requireAuth();
-    require __DIR__ . '/budgets.php';
+    require __DIR__ . '/' . $budget_handler;
     exit;
 }
 
