@@ -167,7 +167,7 @@ main() {
     local platform
     platform="$(detect_platform)"
 
-    echo "=== Student API Environment Removal ($platform) ==="
+    echo "=== Finance API Environment Removal ($platform) ==="
     confirm_deletion "${1:-}"
 
     if [ "$platform" = "mac" ]; then

@@ -10,7 +10,7 @@ function db(): PDO
 
     $host = getenv('DB_HOST') ?: 'localhost';
     $port = getenv('DB_PORT') ?: '3306';
-    $name = getenv('DB_NAME') ?: 'studentdb';
+    $name = getenv('DB_NAME') ?: 'finance_db';
     $user = getenv('DB_USER') ?: 'ase230';
     $password = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : 'ase230pass';
     $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";

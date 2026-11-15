@@ -1,11 +1,11 @@
-# Student REST API: Setup & Automation Guide
+# Personal Finance API: Setup & Automation Guide
 
 An educational REST API written in PHP demonstrating how a consistent HTTP interface can be backed by two interchangeable storage implementations: **JSON flat-file** or **MySQL via PDO**.
 
 ```txt
-                    ┌─ handlers.php ────── data/students.json
+                    ┌─ handlers.php ────── data/finance.json
 HTTP Request ───► index.php ──┤
-                    └─ handlers_pdo.php ── MySQL (studentdb)
+                    └─ handlers_pdo.php ── MySQL (finance_db)
 ```
 
 ### API Endpoints
@@ -20,7 +20,7 @@ HTTP Request ───► index.php ──┤
 | `DELETE` | `/students/{id}` | Delete student by ID | None |
 | `POST` | `/login` | Exchange demo credentials for a bearer token | `{"username": "john", "password": "Secret123"}` |
 
-All `/students` endpoints require `Authorization: Bearer <token>`. Login reuses
+The existing `/students` endpoints require `Authorization: Bearer <token>`. Login reuses
 the classroom bearer demo accounts `john` / `Secret123` and `admin` / `Admin123`
 and returns the fixed demo tokens `john-demo-token` and `admin-demo-token`.
 This is only a local learning example: tokens do not expire, even though the
@@ -44,7 +44,7 @@ cd api
 ```
 
 - **Keep this terminal window open** while the server is running.
-- **Open the test UI** in your browser: `http://localhost:8080/student_api_test.html`
+- **Open the test UI** in your browser: `http://localhost:8080/finance_api_test.html`
 - **To stop the server**: Press `Ctrl+C` in the server terminal, or open a second terminal and run `./stop_server.sh`.
 
 > [!NOTE]
@@ -60,8 +60,8 @@ Choose either storage mode to run your application:
 ```bash
 ./start_server.sh
 ```
-- Uses `handlers.php` and stores records in `data/students.json`.
-- By default, automatically resets `data/students.json` to `[]` on startup so every test run starts clean.
+- Uses `handlers.php` and stores records in `data/finance.json`.
+- By default, automatically resets `data/finance.json` to `[]` on startup so every test run starts clean.
 - To preserve existing records across restarts:
   ```bash
   ./start_server.sh --no-reset
@@ -74,8 +74,8 @@ Choose either storage mode to run your application:
 ./start_server.sh --mysql
 ```
 - Automatically starts the MySQL service if stopped.
-- Connects using the dedicated course user (`ase230`), recreates a clean `studentdb` database, and imports table structures from `schema.sql`.
-- Switches `STUDENT_STORAGE=pdo` and routes requests through `handlers_pdo.php`.
+- Connects using the dedicated course user (`ase230`), recreates a clean `finance_db` database, and imports table structures from `schema.sql`.
+- Switches `FINANCE_STORAGE=pdo` and routes requests through `handlers_pdo.php`.
 - To preserve existing database records across restarts:
   ```bash
   ./start_server.sh --pdo --no-reset
@@ -84,16 +84,16 @@ Choose either storage mode to run your application:
 > [!NOTE]
 > **Safe `--no-reset` Handling**: You can safely pass `--no-reset` at any time, even on your very first run. The script operates defensively:
 > - **MySQL (`--pdo`)**: Ensures the `students` table exists by executing `schema.sql` (`CREATE TABLE IF NOT EXISTS`). If the table and records already exist, MySQL keeps them completely intact; if running for the first time, the schema is created automatically.
-> - **JSON**: Ensures `data/students.json` exists (creating an empty list `[]` only if the file is missing) without overwriting existing data.
+> - **JSON**: Ensures `data/finance.json` exists (creating an empty list `[]` only if the file is missing) without overwriting existing data.
 > - To wipe existing data and start completely fresh, simply omit `--no-reset` or run `./reset_db.sh`.
 
 ### Resetting Data Between Test Runs
 If you want to clear test data while the server is running without restarting it:
 ```bash
-# Reset only JSON storage (data/students.json -> []):
+# Reset only JSON storage (data/finance.json -> []):
 ./reset_db.sh
 
-# Reset both JSON storage and MySQL database (studentdb):
+# Reset both JSON storage and MySQL database (finance_db):
 ./reset_db.sh --mysql
 ```
 
@@ -141,11 +141,11 @@ fastcgi_param HTTP_AUTHORIZATION $http_authorization;
 ### Option A: Web Test UI (Browser)
 Open the visual test page in your web browser:
 ```txt
-http://localhost:8080/student_api_test.html
+http://localhost:8080/finance_api_test.html
 ```
 
 > [!CAUTION]
-> **Never open `student_api_test.html` directly from your file manager (`file:///...`)!**  
+> **Never open `finance_api_test.html` directly from your file manager (`file:///...`)!**
 > Browser security (CORS) treats local `file://` files as untrusted origins and may block requests to `http://localhost:8080`. You must open it through the HTTP server URL above.
 
 ### Option B: Automated cURL Test Runner
@@ -172,8 +172,8 @@ The scripts in this directory provide repeatable setup automation without manual
 
 ### `reset_db.sh`
 - **State Hygiene**: Clears stale data to prevent failures caused by records from previous test runs.
-- **JSON**: Writes `[]` to `data/students.json`.
-- **MySQL**: Drops and recreates `studentdb`, then imports `schema.sql`.
+- **JSON**: Writes `[]` to `data/finance.json`.
+- **MySQL**: Drops and recreates `finance_db`, then imports `schema.sql`.
 - **Safety**: Uses `set -euo pipefail` and explicit error checks on schema import. If database recreation fails, it exits with an error and never prints `Done.`.
 
 ### `stop_server.sh`
@@ -187,15 +187,15 @@ The scripts in this directory provide repeatable setup automation without manual
   - Ubuntu: Uses `apt-get install -y php-cli php-mysql mysql-server default-mysql-client`.
 - **Service Health (`is_mysql_running`)**: Uses `mysqladmin ping` exit code to confirm MySQL daemon responsiveness independently from user login.
 - **Dedicated Course Account (`configure_course_database`)**:
-  - Creates database `studentdb` and user `'ase230'@'localhost'`.
-  - Uses `ALTER USER` to synchronize the password (`ase230pass`) and `GRANT` to synchronize permissions on `studentdb.*`.
+  - Creates database `finance_db` and user `'ase230'@'localhost'`.
+  - Uses `ALTER USER` to synchronize the password (`ase230pass`) and `GRANT` to synchronize permissions on `finance_db.*`.
   - **Does not modify system `root`**, protecting existing personal projects and system databases.
 - **Strict 4-Step Verification (`verify_installation`)**:
   Fails fast with exit code `1` if any check fails:
   1. `php -v` (PHP CLI execution)
   2. `class_exists('PDO')` (PDO extension available)
   3. `extension_loaded('pdo_mysql')` (PDO MySQL driver loaded)
-  4. `mysql -u ase230 studentdb -e "SELECT 1;"` (database connectivity verified)
+  4. `mysql -u ase230 finance_db -e "SELECT 1;"` (database connectivity verified)
 
 ---
 
@@ -225,7 +225,7 @@ Before considering reinstallation, check if your issue matches one of these comm
   ```bash
   ./ensure_install_packages.sh
   ```
-- **Web page does not load in browser**: Ensure the server is actively running (`./start_server.sh`) and navigate to `http://localhost:8080/student_api_test.html`. Do not open the HTML file directly from your operating system's file manager (`file:///...`).
+- **Web page does not load in browser**: Ensure the server is actively running (`./start_server.sh`) and navigate to `http://localhost:8080/finance_api_test.html`. Do not open the HTML file directly from your operating system's file manager (`file:///...`).
 - **If problems persist**: Only after the steps above fail should you consider the complete reinstallation below.
 
 ---
@@ -235,7 +235,7 @@ Before considering reinstallation, check if your issue matches one of these comm
 > [!CAUTION]
 > **DANGER: Read carefully before running `ensure_delete_packages.sh`!**  
 > This script is an **emergency recovery tool**, NOT part of the normal daily workflow.  
-> Running `ensure_delete_packages.sh` permanently uninstalls PHP and MySQL, and **deletes all local MySQL databases, configuration files, and data directories managed by Homebrew/APT**, not just `studentdb`. Other personal or course projects using local MySQL will be permanently lost.
+> Running `ensure_delete_packages.sh` permanently uninstalls PHP and MySQL, and **deletes all local MySQL databases, configuration files, and data directories managed by Homebrew/APT**, not just `finance_db`. Other personal or course projects using local MySQL will be permanently lost.
 
 Use this script only if your PHP or MySQL installation is severely corrupted and you need to reset to a clean state.
 

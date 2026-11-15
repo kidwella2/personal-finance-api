@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #####################################################################
-# Simple REST API Tests using CURL for Student Management System
+# Simple REST API Tests using CURL for Personal Finance API
 # 
 # This script demonstrates how to test REST APIs using CURL
 # Educational purpose - shows basic API testing patterns

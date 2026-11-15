@@ -1,12 +1,12 @@
 <?php
 /**
- * Simple Student Model
+ * Simple Finance Model
  * 
  * This class represents a student with basic properties and methods.
  * It's designed to be simple and easy to understand for beginners.
  */
 
-class Student {
+class Finance {
     private $id;
     private $name;
     private $email;

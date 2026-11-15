@@ -4,9 +4,9 @@ cd "$(dirname "$0")"
 
 source "$(dirname "$0")/ensure_install_packages.sh"
 
-echo "Resetting JSON storage (data/students.json)..."
+echo "Resetting JSON storage (data/finance.json)..."
 mkdir -p data
-echo '[]' > data/students.json
+echo '[]' > data/finance.json
 
 if [ "${1:-}" = "--mysql" ] || [ "${1:-}" = "--pdo" ]; then
     start_mysql

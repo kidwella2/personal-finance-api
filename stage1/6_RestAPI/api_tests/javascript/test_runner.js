@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Simple REST API Tests for Student Management System
+ * Simple REST API Tests for Personal Finance API
  * 
  * This script demonstrates how to test REST APIs using Node.js
  * Run with: node test_runner.js
@@ -480,7 +480,7 @@ async function testMethodNotAllowedCollection() {
 
 // Main test runner
 async function runAllTests() {
-    console.log(`${COLORS.MAGENTA}🚀 Starting REST API Tests for Student Management System${COLORS.RESET}`);
+    console.log(`${COLORS.MAGENTA}🚀 Starting REST API Tests for Personal Finance API${COLORS.RESET}`);
     console.log(`${COLORS.CYAN}API Base URL: ${API_BASE_URL}${COLORS.RESET}`);
     console.log('');
     

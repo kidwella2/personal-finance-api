@@ -23,7 +23,7 @@ detect_platform() {
 PLATFORM="$(detect_platform)" || exit 1
 
 # Course database configuration (fixed for course reliability and security)
-readonly COURSE_DB="studentdb"
+readonly COURSE_DB="finance_db"
 readonly COURSE_USER="ase230"
 readonly COURSE_PASS="ase230pass"
 
@@ -204,12 +204,12 @@ verify_installation() {
         return 1
     fi
 
-    echo "✅ All components verified successfully (PHP, PDO, pdo_mysql, MySQL & studentdb)."
+    echo "✅ All components verified successfully (PHP, PDO, pdo_mysql, MySQL & finance_db)."
     return 0
 }
 
 main() {
-    echo "=== Student API Environment Setup ($PLATFORM) ==="
+    echo "=== Finance API Environment Setup ($PLATFORM) ==="
     if [ "$PLATFORM" = "mac" ]; then
         install_mac_packages
     else

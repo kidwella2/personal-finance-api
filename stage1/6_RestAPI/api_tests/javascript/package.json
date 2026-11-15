@@ -1,7 +1,7 @@
 {
-  "name": "student-api-tests",
+  "name": "finance-api-tests",
   "version": "1.0.0",
-  "description": "Simple REST API tests for Student Management System - Educational Purpose",
+  "description": "Simple REST API tests for Personal Finance API - Educational Purpose",
   "main": "test_runner.js",
   "scripts": {
     "test": "node test_runner.js",
@@ -11,7 +11,7 @@
     "rest-api",
     "testing",
     "education",
-    "students",
+    "finance",
     "javascript"
   ],
   "author": "University Professor",

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Student API Test</title>
+    <title>Simple Finance API Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -49,15 +49,15 @@
 </head>
 
 <body>
-    <h1>Simple Student Management API - Test Page</h1>
+    <h1>Personal Finance API - Test Page</h1>
     <div id="file-protocol-warning" style="display:none; background:#fee2e2; border:2px solid #dc2626; color:#991b1b; padding:15px; border-radius:6px; margin:20px 0; font-size:15px; line-height:1.5;">
         <strong>🚨 WARNING: You opened this file directly via <code>file://</code> protocol!</strong><br>
         Browser security policies (CORS) block all API requests when loaded as a local file.<br>
         You <strong>MUST</strong> open this page through your running PHP server at:<br>
-        <a href="http://localhost:8080/student_api_test.html" style="color:#b91c1c; font-weight:bold; font-size:16px;">http://localhost:8080/student_api_test.html</a>
+        <a href="http://localhost:8080/finance_api_test.html" style="color:#b91c1c; font-weight:bold; font-size:16px;">http://localhost:8080/finance_api_test.html</a>
     </div>
     <p>Use this page to test the REST API endpoints. Make sure your PHP server is running!</p>
-    <p>Check your localhost matches API_BASE. Always access via <code>http://localhost:8080/student_api_test.html</code>.</p>
+    <p>Check your localhost matches API_BASE. Always access via <code>http://localhost:8080/finance_api_test.html</code>.</p>
 
     <div class="test-section">
         <h3>Login</h3>
@@ -108,9 +108,25 @@
         <pre id="delete-student-result"></pre>
     </div>
 
+    <div class="test-section">
+        <h3>6. Get Current Budget</h3>
+        <button onclick="getCurrentBudget()">GET /budgets/current</button>
+        <pre id="current-budget-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h3>7. Replace Current Budget</h3>
+        <input type="month" id="budget-month"><br>
+        <input type="number" id="budget-amount" placeholder="3000" value="3000" step="any"><br>
+        <button onclick="putCurrentBudget()">PUT /budgets/current</button>
+        <pre id="update-budget-result"></pre>
+    </div>
+
     <script>
         const API_BASE = 'http://localhost:8080';
         let apiToken = '';
+        const now = new Date();
+        document.getElementById('budget-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
         async function login() {
             const resultEl = document.getElementById('login-result');
@@ -140,8 +156,45 @@
         if (window.location.protocol === 'file:') {
             document.getElementById('file-protocol-warning').style.display = 'block';
             setTimeout(() => {
-                alert('🚨 WARNING: Do NOT open this file directly from your filesystem (file://)!\n\nBrowser security blocks API requests from local files.\n\nPlease start the server and open:\nhttp://localhost:8080/student_api_test.html');
+                alert('🚨 WARNING: Do NOT open this file directly from your filesystem (file://)!\n\nBrowser security blocks API requests from local files.\n\nPlease start the server and open:\nhttp://localhost:8080/finance_api_test.html');
             }, 100);
+        }
+
+        async function getCurrentBudget() {
+            const resultEl = document.getElementById('current-budget-result');
+            try {
+                const response = await fetch(`${API_BASE}/budgets/current`, {
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
+        async function putCurrentBudget() {
+            const budgetData = {
+                month: document.getElementById('budget-month').value,
+                budget: Number(document.getElementById('budget-amount').value)
+            };
+            const resultEl = document.getElementById('update-budget-result');
+            try {
+                const response = await fetch(`${API_BASE}/budgets/current`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {})
+                    },
+                    body: JSON.stringify(budgetData)
+                });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
         }
 
         async function getAllStudents() {

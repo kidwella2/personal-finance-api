@@ -39,15 +39,15 @@ else
         ./reset_db.sh || exit 1
     else
         mkdir -p data
-        [ ! -f data/students.json ] && echo '[]' > data/students.json
+        [ ! -f data/finance.json ] && echo '[]' > data/finance.json
     fi
 fi
 
 echo "=========================================="
-echo "Starting Student API ($STORAGE mode)"
+echo "Starting Finance API ($STORAGE mode)"
 echo "URL:     http://localhost:8080/"
-echo "Test UI: http://localhost:8080/student_api_test.html"
+echo "Test UI: http://localhost:8080/finance_api_test.html"
 echo "         (Access via HTTP; NEVER open as file://)"
 echo "=========================================="
 
-STUDENT_STORAGE="$STORAGE" exec php -S localhost:8080
+FINANCE_STORAGE="$STORAGE" exec php -S localhost:8080

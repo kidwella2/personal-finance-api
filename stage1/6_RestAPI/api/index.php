@@ -1,6 +1,6 @@
 <?php
 /**
- * Simple Student Management REST API
+ * Simple Finance Management REST API
  * 
  * This is a basic example for learning REST API concepts
  * 
@@ -12,9 +12,9 @@
  * DELETE /students/{id} - Delete student
  */
 
-// Use JSON while learning the REST structure. Set STUDENT_STORAGE=pdo to
+// Use JSON while learning the REST structure. Set FINANCE_STORAGE=pdo to
 // reuse the Week 3 PDO pattern with MySQL for the Project 1 bridge.
-$storage = getenv('STUDENT_STORAGE') ?: 'json';
+$storage = getenv('FINANCE_STORAGE') ?: 'json';
 require_once $storage === 'pdo'
     ? __DIR__ . '/handlers_pdo.php'
     : __DIR__ . '/handlers.php';
@@ -59,13 +59,15 @@ if (empty($resource)) {
     // Root endpoint - show API info
     echo json_encode([
         'success' => true,
-        'message' => 'Simple Student Management API',
+        'message' => 'Simple Finance Management API',
         'endpoints' => [
             'GET /students' => 'Get all students',
             'GET /students/{id}' => 'Get student by ID',
             'POST /students' => 'Create new student',
             'PUT /students/{id}' => 'Update student',
             'DELETE /students/{id}' => 'Delete student',
+            'GET /budgets/current' => 'Get the current monthly budget',
+            'PUT /budgets/current' => 'Create or replace the current monthly budget',
             'POST /login' => 'Get a bearer token'
         ]
     ]);
@@ -79,6 +81,25 @@ if ($resource === 'login') {
         exit;
     }
     require __DIR__ . '/login.php';
+    exit;
+}
+
+if ($resource === 'budgets') {
+    if (count($segments) !== 2 || $segments[1] !== 'current') {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Resource not found']);
+        exit;
+    }
+
+    if (!in_array($method, ['GET', 'PUT'])) {
+        header('Allow: GET, PUT');
+        http_response_code(405);
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+        exit;
+    }
+
+    requireAuth();
+    require __DIR__ . '/budgets.php';
     exit;
 }
 

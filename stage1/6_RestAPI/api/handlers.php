@@ -6,7 +6,7 @@
  * for students stored in a JSON file.
  */
 
-require_once 'models/Student.php';
+require_once 'models/Finance.php';
 
 /**
  * Get all students
@@ -101,7 +101,7 @@ function create_student()
     $students = load_students();
     $new_id = get_next_id($students);
 
-    $new_student = new Student();
+    $new_student = new Finance();
     $new_student->setId($new_id);
     $new_student->setName($input['name']);
     $new_student->setEmail($input['email']);
@@ -217,7 +217,7 @@ function delete_student($id)
  */
 function load_students()
 {
-    $file_path = 'data/students.json';
+    $file_path = 'data/finance.json';
 
     if (!file_exists($file_path)) {
         return [];
@@ -249,7 +249,7 @@ function save_students($students)
     if (!is_dir($dir)) {
         mkdir($dir, 0755, true);
     }
-    $file_path = $dir . '/students.json';
+    $file_path = $dir . '/finance.json';
     $json_data = json_encode($students, JSON_PRETTY_PRINT);
     if ($json_data === false) {
         return false;
