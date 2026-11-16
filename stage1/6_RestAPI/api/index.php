@@ -74,6 +74,7 @@ if (empty($resource)) {
             'GET /transactions' => 'Get transactions',
             'POST /transactions' => 'Create a transaction',
             'DELETE /transactions/{id}' => 'Delete a transaction',
+            'GET /reports/monthly-spending?month=YYYY-MM' => 'Get monthly spending totals',
             'POST /login' => 'Get a bearer token'
         ]
     ]);
@@ -142,6 +143,25 @@ if ($resource === 'transactions') {
 
     requireAuth();
     require __DIR__ . '/transactions.php';
+    exit;
+}
+
+if ($resource === 'reports') {
+    if (count($segments) !== 2 || $segments[1] !== 'monthly-spending') {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Resource not found']);
+        exit;
+    }
+
+    if ($method !== 'GET') {
+        header('Allow: GET');
+        http_response_code(405);
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+        exit;
+    }
+
+    requireAuth();
+    require __DIR__ . '/monthly_spending.php';
     exit;
 }
 

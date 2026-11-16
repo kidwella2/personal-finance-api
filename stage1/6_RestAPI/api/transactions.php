@@ -16,8 +16,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
-    if (!is_array($input) || !array_key_exists('name', $input) || !array_key_exists('amount', $input)) {
-        sendJsonError(400, 'name and amount are required');
+    if (!is_array($input) || !array_key_exists('month', $input) || !array_key_exists('name', $input) || !array_key_exists('amount', $input)) {
+        sendJsonError(400, 'month, name and amount are required');
+    }
+    if (!is_string($input['month']) || !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $input['month'])) {
+        sendJsonError(400, 'month must use YYYY-MM format');
     }
     if (!is_string($input['name']) || trim($input['name']) === '') {
         sendJsonError(400, 'name must be a non-empty string');
@@ -37,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $transactions[] = [
+        'month' => $input['month'],
         'id' => $next_id,
         'name' => trim($input['name']),
         'amount' => $input['amount']

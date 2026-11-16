@@ -151,6 +151,7 @@
 
     <div class="test-section">
         <h3>13. Create Transaction</h3>
+        <input type="month" id="transaction-month"><br>
         <input type="text" id="transaction-name" placeholder="Name" value="gas"><br>
         <input type="number" id="transaction-amount" placeholder="40.87" value="40.87" step="any"><br>
         <button onclick="createTransaction()">POST /transactions</button>
@@ -164,11 +165,21 @@
         <pre id="delete-transaction-result"></pre>
     </div>
 
+    <div class="test-section">
+        <h3>15. Monthly Spending Report</h3>
+        <input type="month" id="report-month"><br>
+        <button onclick="getMonthlySpending()">GET /reports/monthly-spending</button>
+        <pre id="monthly-spending-result"></pre>
+    </div>
+
     <script>
         const API_BASE = 'http://localhost:8080';
         let apiToken = '';
         const now = new Date();
-        document.getElementById('budget-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('budget-month').value = currentMonth;
+        document.getElementById('transaction-month').value = currentMonth;
+        document.getElementById('report-month').value = currentMonth;
 
         async function login() {
             const resultEl = document.getElementById('login-result');
@@ -309,6 +320,21 @@
             }
         }
 
+        async function getMonthlySpending() {
+            const month = document.getElementById('report-month').value;
+            const resultEl = document.getElementById('monthly-spending-result');
+            try {
+                const response = await fetch(`${API_BASE}/reports/monthly-spending?month=${encodeURIComponent(month)}`, {
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
         async function createTransaction() {
             const resultEl = document.getElementById('create-transaction-result');
             try {
@@ -319,6 +345,7 @@
                         ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {})
                     },
                     body: JSON.stringify({
+                        month: document.getElementById('transaction-month').value,
                         name: document.getElementById('transaction-name').value,
                         amount: Number(document.getElementById('transaction-amount').value)
                     })
