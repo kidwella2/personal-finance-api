@@ -71,6 +71,9 @@ if (empty($resource)) {
             'GET /budgets/recurring-items' => 'Get recurring budget items',
             'POST /budgets/recurring-items' => 'Create a recurring budget item',
             'DELETE /budgets/recurring-items/{id}' => 'Delete a recurring budget item',
+            'GET /transactions' => 'Get transactions',
+            'POST /transactions' => 'Create a transaction',
+            'DELETE /transactions/{id}' => 'Delete a transaction',
             'POST /login' => 'Get a bearer token'
         ]
     ]);
@@ -118,6 +121,27 @@ if ($resource === 'budgets') {
 
     requireAuth();
     require __DIR__ . '/' . $budget_handler;
+    exit;
+}
+
+if ($resource === 'transactions') {
+    if (count($segments) > 2 || (isset($segments[1]) && !ctype_digit($segments[1]))) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Resource not found']);
+        exit;
+    }
+
+    $transaction_id = isset($segments[1]) ? (int)$segments[1] : null;
+    $allowed = $transaction_id === null ? ['GET', 'POST'] : ['DELETE'];
+    if (!in_array($method, $allowed)) {
+        header('Allow: ' . implode(', ', $allowed));
+        http_response_code(405);
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+        exit;
+    }
+
+    requireAuth();
+    require __DIR__ . '/transactions.php';
     exit;
 }
 

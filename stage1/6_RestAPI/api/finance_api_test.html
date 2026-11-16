@@ -143,6 +143,27 @@
         <pre id="delete-recurring-item-result"></pre>
     </div>
 
+    <div class="test-section">
+        <h3>12. Get Transactions</h3>
+        <button onclick="getTransactions()">GET /transactions</button>
+        <pre id="transactions-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h3>13. Create Transaction</h3>
+        <input type="text" id="transaction-name" placeholder="Name" value="gas"><br>
+        <input type="number" id="transaction-amount" placeholder="40.87" value="40.87" step="any"><br>
+        <button onclick="createTransaction()">POST /transactions</button>
+        <pre id="create-transaction-result"></pre>
+    </div>
+
+    <div class="test-section">
+        <h3>14. Delete Transaction</h3>
+        <input type="number" id="delete-transaction-id" placeholder="Transaction ID" value="1">
+        <button onclick="deleteTransaction()">DELETE /transactions/{id}</button>
+        <pre id="delete-transaction-result"></pre>
+    </div>
+
     <script>
         const API_BASE = 'http://localhost:8080';
         let apiToken = '';
@@ -264,6 +285,62 @@
                 });
                 if (response.status === 204) {
                     resultEl.textContent = 'HTTP 204: Recurring item deleted';
+                    return;
+                }
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
+        async function getTransactions() {
+            const resultEl = document.getElementById('transactions-result');
+            try {
+                const response = await fetch(`${API_BASE}/transactions`, {
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
+        async function createTransaction() {
+            const resultEl = document.getElementById('create-transaction-result');
+            try {
+                const response = await fetch(`${API_BASE}/transactions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {})
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('transaction-name').value,
+                        amount: Number(document.getElementById('transaction-amount').value)
+                    })
+                });
+                const data = await response.json();
+                const prefix = response.ok ? '' : `HTTP ${response.status}: `;
+                resultEl.textContent = prefix + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Request or response error: ' + error.message;
+            }
+        }
+
+        async function deleteTransaction() {
+            const id = document.getElementById('delete-transaction-id').value;
+            const resultEl = document.getElementById('delete-transaction-result');
+            try {
+                const response = await fetch(`${API_BASE}/transactions/${id}`, {
+                    method: 'DELETE',
+                    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {}
+                });
+                if (response.status === 204) {
+                    resultEl.textContent = 'HTTP 204: Transaction deleted';
                     return;
                 }
                 const data = await response.json();
