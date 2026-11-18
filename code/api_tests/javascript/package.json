@@ -1,0 +1,22 @@
+{
+  "name": "finance-api-tests",
+  "version": "1.0.0",
+  "description": "Simple REST API tests for Personal Finance API - Educational Purpose",
+  "main": "test_runner.js",
+  "scripts": {
+    "test": "node test_runner.js",
+    "test:verbose": "node test_runner.js --verbose"
+  },
+  "keywords": [
+    "rest-api",
+    "testing",
+    "education",
+    "finance",
+    "javascript"
+  ],
+  "author": "University Professor",
+  "license": "MIT",
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}
