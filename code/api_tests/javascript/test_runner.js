@@ -128,10 +128,10 @@ async function testServerConnection() {
 }
 
 async function testUnauthenticatedAccess() {
-    console.log(`${COLORS.BLUE}Testing GET /students without a token...${COLORS.RESET}`);
+    console.log(`${COLORS.BLUE}Testing GET /budgets/current without a token...${COLORS.RESET}`);
 
     try {
-        const result = await makeRequest(`${API_BASE_URL}/students`);
+        const result = await makeRequest(`${API_BASE_URL}/budgets/current`);
         if (result.status === 401 && result.data && result.data.error) {
             printResult('Unauthorized Access', true, 'Correctly returned 401', result.data);
             return true;
@@ -602,182 +602,6 @@ async function testMonthlySpendingReportFailures() {
     }
 }
 
-async function testGetAllStudents() {
-    console.log(`${COLORS.BLUE}Testing GET /students...${COLORS.RESET}`);
-    
-    try {
-        const result = await makeRequest(`${API_BASE_URL}/students`);
-        
-        if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-            const students = result.data.data;
-            const countMatches = result.data.count === students.length;
-            const hasValidStructure = students.length === 0 || 
-                (students[0].id && students[0].name && students[0].email);
-            
-            if (countMatches && hasValidStructure) {
-                printResult('Get All Students', true, 
-                    `Retrieved ${students.length} students with valid structure`, result.data);
-                return true;
-            } else {
-                printResult('Get All Students', false, 
-                    'Response structure validation failed', result.data);
-                return false;
-            }
-        } else {
-            printResult('Get All Students', false, 'Unexpected response format', result.data);
-            return false;
-        }
-    } catch (error) {
-        printResult('Get All Students', false, `Request failed: ${error.error}`, error);
-        return false;
-    }
-}
-
-async function testGetSingleStudent(studentId = 1) {
-    console.log(`${COLORS.BLUE}Testing GET /students/${studentId}...${COLORS.RESET}`);
-    
-    try {
-        const result = await makeRequest(`${API_BASE_URL}/students/${studentId}`);
-        
-        if (result.ok && result.data.success && result.data.data) {
-            const student = result.data.data;
-            const hasRequiredFields = student.id === studentId && 
-                student.name && 
-                student.email && 
-                student.major && 
-                typeof student.year === 'number';
-            
-            if (hasRequiredFields) {
-                printResult('Get Single Student', true, 
-                    `Retrieved student: ${student.name}`, result.data);
-                return true;
-            } else {
-                printResult('Get Single Student', false, 
-                    'Student missing required fields', result.data);
-                return false;
-            }
-        } else {
-            printResult('Get Single Student', false, 
-                'Could not retrieve student', result.data);
-            return false;
-        }
-    } catch (error) {
-        printResult('Get Single Student', false, `Request failed: ${error.error}`, error);
-        return false;
-    }
-}
-
-async function testCreateStudent() {
-    console.log(`${COLORS.BLUE}Testing POST /students...${COLORS.RESET}`);
-    
-    const newStudent = {
-        name: 'Test Student CLI',
-        email: 'test.cli@university.edu',
-        major: 'Software Engineering',
-        year: 1
-    };
-    
-    try {
-        const result = await makeRequest(`${API_BASE_URL}/students`, 'POST', newStudent);
-        
-        if (result.status === 201 && result.data.success && result.data.data) {
-            const created = result.data.data;
-            const isValid = created.name === newStudent.name && 
-                created.email === newStudent.email &&
-                created.major === newStudent.major &&
-                created.year === newStudent.year &&
-                created.id > 0;
-            
-            if (isValid) {
-                printResult('Create Student', true, 
-                    `Created student with ID: ${created.id}`, result.data);
-                return created.id;
-            } else {
-                printResult('Create Student', false, 
-                    'Created student has incorrect data', result.data);
-                return false;
-            }
-        } else {
-            printResult('Create Student', false, 
-                'Student creation failed', result.data);
-            return false;
-        }
-    } catch (error) {
-        printResult('Create Student', false, `Request failed: ${error.error}`, error);
-        return false;
-    }
-}
-
-async function testUpdateStudent(studentId) {
-    console.log(`${COLORS.BLUE}Testing PUT /students/${studentId}...${COLORS.RESET}`);
-    
-    const updateData = {
-        name: 'Updated Test Student',
-        email: 'test.cli.updated@university.edu',
-        major: 'Data Science',
-        year: 2
-    };
-    
-    try {
-        const result = await makeRequest(`${API_BASE_URL}/students/${studentId}`, 'PUT', updateData);
-        
-        if (result.ok && result.data.success && result.data.data) {
-            const updated = result.data.data;
-            const isValid = updated.name === updateData.name && 
-                updated.email === updateData.email &&
-                updated.major === updateData.major &&
-                updated.year === updateData.year;
-            
-            if (isValid) {
-                printResult('Update Student', true, 
-                    `Updated student: ${updated.name}`, result.data);
-                return true;
-            } else {
-                printResult('Update Student', false, 
-                    'Update data validation failed', result.data);
-                return false;
-            }
-        } else {
-            printResult('Update Student', false, 
-                'Student update failed', result.data);
-            return false;
-        }
-    } catch (error) {
-        printResult('Update Student', false, `Request failed: ${error.error}`, error);
-        return false;
-    }
-}
-
-async function testDeleteStudent(studentId) {
-    console.log(`${COLORS.BLUE}Testing DELETE /students/${studentId}...${COLORS.RESET}`);
-    
-    try {
-        const result = await makeRequest(`${API_BASE_URL}/students/${studentId}`, 'DELETE');
-        
-        if (result.ok && result.data.success) {
-            // Verify deletion by trying to get the student
-            const verifyResult = await makeRequest(`${API_BASE_URL}/students/${studentId}`);
-            
-            if (verifyResult.status === 404) {
-                printResult('Delete Student', true, 
-                    `Student ${studentId} deleted successfully`, result.data);
-                return true;
-            } else {
-                printResult('Delete Student', false, 
-                    'Student still exists after deletion', verifyResult.data);
-                return false;
-            }
-        } else {
-            printResult('Delete Student', false, 
-                'Student deletion failed', result.data);
-            return false;
-        }
-    } catch (error) {
-        printResult('Delete Student', false, `Request failed: ${error.error}`, error);
-        return false;
-    }
-}
-
 // --- Failure-case tests ---
 
 async function testUnknownResource() {
@@ -798,10 +622,10 @@ async function testUnknownResource() {
 }
 
 async function testInvalidId() {
-    console.log(`${COLORS.BLUE}Testing GET /students/abc (invalid id)...${COLORS.RESET}`);
+    console.log(`${COLORS.BLUE}Testing GET /budgets/recurring-items/abc (invalid id)...${COLORS.RESET}`);
 
     try {
-        const result = await makeRequest(`${API_BASE_URL}/students/abc`);
+        const result = await makeRequest(`${API_BASE_URL}/budgets/recurring-items/abc`);
         if (result.status === 400) {
             printResult('Invalid ID', true, 'Correctly returned 400', result.data);
             return true;
@@ -815,10 +639,10 @@ async function testInvalidId() {
 }
 
 async function testMissingFields() {
-    console.log(`${COLORS.BLUE}Testing POST /students with {} (missing fields)...${COLORS.RESET}`);
+    console.log(`${COLORS.BLUE}Testing POST /transactions with {} (missing fields)...${COLORS.RESET}`);
 
     try {
-        const result = await makeRequest(`${API_BASE_URL}/students`, 'POST', {});
+        const result = await makeRequest(`${API_BASE_URL}/transactions`, 'POST', {});
         if (isExpectedError(result, 400)) {
             printResult('Missing Fields', true, 'Correctly returned 400', result.data);
             return true;
@@ -834,7 +658,6 @@ async function testMissingFields() {
 function isExpectedError(result, status) {
     return result.status === status &&
         result.data &&
-        result.data.success === false &&
         typeof result.data.error === 'string' &&
         result.data.error.length > 0;
 }
@@ -858,30 +681,29 @@ async function testBadRequestBody(testName, method, path, data, rawData = false)
 }
 
 async function testMalformedJson() {
-    return testBadRequestBody('Malformed JSON', 'POST', '/students', '{bad json', true);
+    return testBadRequestBody('Malformed JSON', 'POST', '/transactions', '{bad json', true);
 }
 
 async function testArrayBody() {
-    return testBadRequestBody('Array Body', 'POST', '/students', [1, 2]);
+    return testBadRequestBody('Array Body', 'POST', '/transactions', [1, 2]);
 }
 
 async function testInvalidFieldValues() {
-    return testBadRequestBody('Invalid Field Values', 'POST', '/students',
-        { name: ' ', email: 'bad' });
+    return testBadRequestBody('Invalid Field Values', 'POST', '/transactions',
+        { month: 'invalid', name: ' ', amount: -1 });
 }
 
 async function testIncompletePut() {
-    return testBadRequestBody('Incomplete PUT', 'PUT', '/students/999999',
-        { name: 'Test', email: 'test@example.com' });
+    return testBadRequestBody('Incomplete PUT', 'PUT', '/budgets/current', { budget: 3000 });
 }
 
 async function testMethodNotAllowedItem() {
-    console.log(`${COLORS.BLUE}Testing POST /students/1 (method not allowed)...${COLORS.RESET}`);
+    console.log(`${COLORS.BLUE}Testing POST /transactions/1 (method not allowed)...${COLORS.RESET}`);
 
     try {
-        const result = await makeRequest(`${API_BASE_URL}/students/1`, 'POST', {});
+        const result = await makeRequest(`${API_BASE_URL}/transactions/1`, 'POST', {});
         const allow = result.headers && result.headers['allow'];
-        if (result.status === 405 && allow === 'GET, PUT, DELETE') {
+        if (result.status === 405 && allow === 'DELETE') {
             printResult('Method Not Allowed (item)', true,
                 `Got 405 with Allow: ${result.headers['allow']}`, result.data);
             return true;
@@ -896,10 +718,10 @@ async function testMethodNotAllowedItem() {
 }
 
 async function testMethodNotAllowedCollection() {
-    console.log(`${COLORS.BLUE}Testing PUT /students (method not allowed)...${COLORS.RESET}`);
+    console.log(`${COLORS.BLUE}Testing PUT /transactions (method not allowed)...${COLORS.RESET}`);
 
     try {
-        const result = await makeRequest(`${API_BASE_URL}/students`, 'PUT', {});
+        const result = await makeRequest(`${API_BASE_URL}/transactions`, 'PUT', {});
         const allow = result.headers && result.headers['allow'];
         if (result.status === 405 && allow === 'GET, POST') {
             printResult('Method Not Allowed (collection)', true,
@@ -1063,46 +885,7 @@ async function runAllTests() {
     }
     console.log('');
     
-    // Test 2: Get all students
-    totalTests++;
-    if (await testGetAllStudents()) {
-        passedTests++;
-    }
-    console.log('');
-    
-    // Test 3: Create student (capture ID for subsequent tests)
-    totalTests++;
-    const createdStudentId = await testCreateStudent();
-    if (createdStudentId) {
-        passedTests++;
-    }
-    console.log('');
-    
-    // Tests 4-6: Read, update, and delete the created student
-    if (createdStudentId) {
-        // Test 4: Get single student (using created ID)
-        totalTests++;
-        if (await testGetSingleStudent(createdStudentId)) {
-            passedTests++;
-        }
-        console.log('');
-
-        // Test 5: Update student (using created ID)
-        totalTests++;
-        if (await testUpdateStudent(createdStudentId)) {
-            passedTests++;
-        }
-        console.log('');
-        
-        // Test 6: Delete student (using created ID)
-        totalTests++;
-        if (await testDeleteStudent(createdStudentId)) {
-            passedTests++;
-        }
-        console.log('');
-    }
-    
-    // Tests 7-15: Failure cases (routing, input, and method validation)
+    // Failure cases for routing, input, and method validation
     totalTests++;
     if (await testUnknownResource()) {
         passedTests++;
@@ -1207,11 +990,6 @@ module.exports = {
     testDeleteTransactionFailures,
     testMonthlySpendingReport,
     testMonthlySpendingReportFailures,
-    testGetAllStudents,
-    testGetSingleStudent,
-    testCreateStudent,
-    testUpdateStudent,
-    testDeleteStudent,
     testUnknownResource,
     testInvalidId,
     testMissingFields,

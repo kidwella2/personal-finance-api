@@ -3,9 +3,8 @@
 An educational REST API written in PHP demonstrating how a consistent HTTP interface can be backed by two interchangeable storage implementations: **JSON flat-file** or **MySQL via PDO**.
 
 ```txt
-                    ┌─ handlers.php ────── data/finance.json
-HTTP Request ───► index.php ──┤
-                    └─ handlers_pdo.php ── MySQL (finance_db)
+HTTP Request ───► index.php ──┬─ JSON endpoints ── data/*.json
+                              └─ PDO endpoints ──── MySQL (finance_db)
 ```
 
 ### API Endpoints
@@ -13,15 +12,19 @@ HTTP Request ───► index.php ──┤
 | Method | Endpoint | Description | Request Body |
 |---|---|---|---|
 | `GET` | `/` | Show API information and available endpoints | None |
-| `GET` | `/students` | List all students | None |
-| `GET` | `/students/{id}` | Get single student by ID | None |
-| `POST` | `/students` | Create new student | `{"name": "...", "email": "...", "major": "...", "year": 1}` |
-| `PUT` | `/students/{id}` | Replace existing student | All 4 fields required |
-| `DELETE` | `/students/{id}` | Delete student by ID | None |
 | `POST` | `/login` | Exchange demo credentials for a bearer token | `{"username": "john", "password": "Secret123"}` |
+| `GET` | `/budgets/current` | Get the current monthly budget | None |
+| `PUT` | `/budgets/current` | Replace the current monthly budget | `{"month":"YYYY-MM","budget":3000}` |
+| `GET` | `/budgets/recurring-items` | List recurring budget items | None |
+| `POST` | `/budgets/recurring-items` | Create a recurring budget item | `{"name":"electric","amount":100}` |
+| `DELETE` | `/budgets/recurring-items/{id}` | Delete a recurring budget item | None |
+| `GET` | `/transactions` | List transactions | None |
+| `POST` | `/transactions` | Create a transaction | `{"month":"YYYY-MM","name":"gas","amount":40.87}` |
+| `DELETE` | `/transactions/{id}` | Delete a transaction | None |
+| `GET` | `/reports/monthly-spending?month=YYYY-MM` | Get monthly spending totals | None |
 
-The existing `/students` endpoints require `Authorization: Bearer <token>`. Login reuses
-the classroom bearer demo accounts `john` / `Secret123` and `admin` / `Admin123`
+All finance data endpoints require `Authorization: Bearer <token>`. Login reuses
+the demo accounts `john` / `Secret123` and `admin` / `Admin123`
 and returns the fixed demo tokens `john-demo-token` and `admin-demo-token`.
 This is only a local learning example: tokens do not expire, even though the
 response includes the demo `expires_in` field.
@@ -60,8 +63,7 @@ Choose either storage mode to run your application:
 ```bash
 ./start_server.sh
 ```
-- Uses `handlers.php` and stores records in `data/finance.json`.
-- By default, automatically resets `data/finance.json` to `[]` on startup so every test run starts clean.
+- Uses the PHP endpoints and stores finance data in `data/current_budget.json`, `data/recurring_items.json`, and `data/transactions.json`.
 - To preserve existing records across restarts:
   ```bash
   ./start_server.sh --no-reset
@@ -75,27 +77,24 @@ Choose either storage mode to run your application:
 ```
 - Automatically starts the MySQL service if stopped.
 - Connects using the dedicated course user (`ase230`), recreates a clean `finance_db` database, and imports table structures from `schema.sql`.
-- Switches `FINANCE_STORAGE=pdo` and routes requests through `handlers_pdo.php`.
+- Switches `FINANCE_STORAGE=pdo` and routes requests through the matching `*_pdo.php` finance endpoints.
 - To preserve existing database records across restarts:
   ```bash
   ./start_server.sh --pdo --no-reset
   ```
 
 > [!NOTE]
-> **Safe `--no-reset` Handling**: You can safely pass `--no-reset` at any time, even on your very first run. The script operates defensively:
-> - **MySQL (`--pdo`)**: Ensures the `students` table exists by executing `schema.sql` (`CREATE TABLE IF NOT EXISTS`). If the table and records already exist, MySQL keeps them completely intact; if running for the first time, the schema is created automatically.
-> - **JSON**: Ensures `data/finance.json` exists (creating an empty list `[]` only if the file is missing) without overwriting existing data.
-> - To wipe existing data and start completely fresh, simply omit `--no-reset` or run `./reset_db.sh`.
+> **Safe `--no-reset` Handling**: You can safely pass `--no-reset` at any time, even on your very first run. In PDO mode, the script ensures the finance tables exist through `schema.sql` and preserves existing records. In JSON mode, finance data remains in its three data files.
 
 ### Resetting Data Between Test Runs
-If you want to clear test data while the server is running without restarting it:
+To reset the SQL data between test runs:
 ```bash
-# Reset only JSON storage (data/finance.json -> []):
-./reset_db.sh
-
-# Reset both JSON storage and MySQL database (finance_db):
+# Reset the MySQL database (finance_db):
 ./reset_db.sh --mysql
 ```
+
+JSON finance data is stored in `data/current_budget.json`,
+`data/recurring_items.json`, and `data/transactions.json`.
 
 ### Stopping Server and Background Services
 When finished working, stop the development server and background database service cleanly:
@@ -127,7 +126,7 @@ curl -X POST http://localhost:8080/login \
 Use the returned `token` value on later requests:
 
 ```bash
-curl http://localhost:8080/students \
+curl http://localhost:8080/budgets/current \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -148,14 +147,13 @@ http://localhost:8080/finance_api_test.html
 > **Never open `finance_api_test.html` directly from your file manager (`file:///...`)!**
 > Browser security (CORS) treats local `file://` files as untrusted origins and may block requests to `http://localhost:8080`. You must open it through the HTTP server URL above.
 
-### Option B: Automated cURL Test Runner
-From the `api/` directory, navigate to the cURL test suite:
+### Option B: Automated Node.js Test Runner
+From the `api/` directory, run the finance API tests:
 ```bash
-# From the api/ directory:
-cd ../api_tests/curl
-./test_runner_curl.sh
+cd ../api_tests/javascript
+npm test
 ```
-This tests all 16 endpoint scenarios, including CRUD operations, validation failures (400), unknown resources (404), and method restrictions (405 with `Allow` headers).
+The runner covers the finance endpoints, including validation failures and method restrictions, and prints its results to the terminal.
 
 ---
 
@@ -172,8 +170,8 @@ The scripts in this directory provide repeatable setup automation without manual
 
 ### `reset_db.sh`
 - **State Hygiene**: Clears stale data to prevent failures caused by records from previous test runs.
-- **JSON**: Writes `[]` to `data/finance.json`.
-- **MySQL**: Drops and recreates `finance_db`, then imports `schema.sql`.
+- **JSON**: JSON finance records are stored in the three finance data files.
+- **MySQL**: Drops and recreates `finance_db`, then imports the finance tables from `schema.sql`.
 - **Safety**: Uses `set -euo pipefail` and explicit error checks on schema import. If database recreation fails, it exits with an error and never prints `Done.`.
 
 ### `stop_server.sh`

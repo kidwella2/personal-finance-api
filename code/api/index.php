@@ -1,23 +1,7 @@
 <?php
 /**
  * Simple Finance Management REST API
- * 
- * This is a basic example for learning REST API concepts
- * 
- * Available endpoints:
- * GET    /students      - Get all students
- * GET    /students/{id} - Get student by ID
- * POST   /students      - Create new student
- * PUT    /students/{id} - Update student
- * DELETE /students/{id} - Delete student
  */
-
-// Use JSON while learning the REST structure. Set FINANCE_STORAGE=pdo to
-// reuse the Week 3 PDO pattern with MySQL for the Project 1 bridge.
-$storage = getenv('FINANCE_STORAGE') ?: 'json';
-require_once $storage === 'pdo'
-    ? __DIR__ . '/handlers_pdo.php'
-    : __DIR__ . '/handlers.php';
 require_once __DIR__ . '/bearer_auth.php';
 
 // Set JSON response header
@@ -31,21 +15,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
+$storage = getenv('FINANCE_STORAGE') ?: 'json';
+if ($storage === 'pdo') {
+    require_once __DIR__ . '/database.php';
+}
+
 // Parse the URL path
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $path = trim($path, '/');
 
 // Remove 'api' from path if present
-// This is useful if the API is accessed via a prefix like /api/students
-/* 
+// This is useful if the API is accessed via an /api prefix
+/*
 if (strpos($path, 'api/') === 0) {
     $path = substr($path, 4);
 }
 */
 
 $segments = explode('/', $path);
-$resource = $segments[0] ?? ''; // students
+$resource = $segments[0] ?? ''; // Resource name
 $id = $segments[1] ?? null; // 123
 
 // We can also use a more flexible approach to handle paths
@@ -61,11 +50,7 @@ if (empty($resource)) {
         'success' => true,
         'message' => 'Simple Finance Management API',
         'endpoints' => [
-            'GET /students' => 'Get all students',
-            'GET /students/{id}' => 'Get student by ID',
-            'POST /students' => 'Create new student',
-            'PUT /students/{id}' => 'Update student',
-            'DELETE /students/{id}' => 'Delete student',
+            'POST /login' => 'Get a bearer token',
             'GET /budgets/current' => 'Get the current monthly budget',
             'PUT /budgets/current' => 'Create or replace the current monthly budget',
             'GET /budgets/recurring-items' => 'Get recurring budget items',
@@ -74,8 +59,7 @@ if (empty($resource)) {
             'GET /transactions' => 'Get transactions',
             'POST /transactions' => 'Create a transaction',
             'DELETE /transactions/{id}' => 'Delete a transaction',
-            'GET /reports/monthly-spending?month=YYYY-MM' => 'Get monthly spending totals',
-            'POST /login' => 'Get a bearer token'
+            'GET /reports/monthly-spending?month=YYYY-MM' => 'Get monthly spending totals'
         ]
     ]);
     exit;
@@ -95,7 +79,7 @@ if ($resource === 'budgets') {
     $recurring_item_id = null;
     if (count($segments) === 2 && $segments[1] === 'current') {
         $allowed = ['GET', 'PUT'];
-        $budget_handler = 'budgets.php';
+        $budget_handler = $storage === 'pdo' ? 'budgets_pdo.php' : 'budgets.php';
     } elseif (count($segments) >= 2 && count($segments) <= 3 && $segments[1] === 'recurring-items') {
         if (count($segments) === 3) {
             if (!ctype_digit($segments[2])) {
@@ -106,7 +90,7 @@ if ($resource === 'budgets') {
             $recurring_item_id = (int)$segments[2];
         }
         $allowed = $recurring_item_id === null ? ['GET', 'POST'] : ['DELETE'];
-        $budget_handler = 'recurring_items.php';
+        $budget_handler = $storage === 'pdo' ? 'recurring_items_pdo.php' : 'recurring_items.php';
     } else {
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'Resource not found']);
@@ -142,7 +126,7 @@ if ($resource === 'transactions') {
     }
 
     requireAuth();
-    require __DIR__ . '/transactions.php';
+    require __DIR__ . '/' . ($storage === 'pdo' ? 'transactions_pdo.php' : 'transactions.php');
     exit;
 }
 
@@ -161,63 +145,9 @@ if ($resource === 'reports') {
     }
 
     requireAuth();
-    require __DIR__ . '/monthly_spending.php';
+    require __DIR__ . '/' . ($storage === 'pdo' ? 'monthly_spending_pdo.php' : 'monthly_spending.php');
     exit;
 }
 
-if ($resource !== 'students') {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Resource not found']);
-    exit;
-}
-
-if (count($segments) > 2) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'error' => 'Resource not found']);
-    exit;
-}
-
-$student_id = null;
-if (isset($segments[1]) && $segments[1] !== '') {
-    if (!ctype_digit($segments[1])) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid student ID']);
-        exit;
-    }
-    $student_id = (int)$segments[1];
-}
-
-// Each path allows a different set of methods, so we check that first and
-// reply with 405 + Allow for anything else, instead of hard-coding one list.
-$allowed = ($student_id !== null) ? ['GET', 'PUT', 'DELETE'] : ['GET', 'POST'];
-
-if (!in_array($method, $allowed)) {
-    header('Allow: ' . implode(', ', $allowed));
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
-    exit;
-}
-
-requireAuth();
-
-switch ($method) {
-    case 'GET':
-        if ($student_id !== null) {
-            get_student($student_id);
-        } else {
-            get_all_students();
-        }
-        break;
-
-    case 'POST':
-        create_student();
-        break;
-
-    case 'PUT':
-        update_student($student_id);
-        break;
-
-    case 'DELETE':
-        delete_student($student_id);
-        break;
-}
+http_response_code(404);
+echo json_encode(['success' => false, 'error' => 'Resource not found']);
