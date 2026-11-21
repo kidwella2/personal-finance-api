@@ -30,105 +30,133 @@ response includes the demo `expires_in` field.
 
 ---
 
-## 1. Quick Start
+## 1. Set up
 
-Get the entire development environment and API server running in three commands:
+Use Ubuntu 24.04 or Ubuntu 24.04 on WSL2. Open a terminal and keep it open
+until you finish the steps below. Run the commands in each box in order. If a
+command reports an error, fix it before continuing.
+
+These steps use a MySQL database named `finance_db` and an account named
+`ase230`. The setup can change that account's password, and the tests change
+database data. Use a separate Ubuntu environment if you already use them.
+
+Install the required software:
 
 ```bash
-# From the code directory:
-cd api
-
-# One-time setup: install packages, configure database, and verify tools
-./ensure_install_packages.sh
-
-# Start the API server
-./start_server.sh
+sudo apt-get update
+sudo apt-get install -y git nodejs npm nginx php-cli php-fpm php-mysql mysql-server default-mysql-client nano curl
 ```
 
-- **Keep this terminal window open** while the server is running.
-- **Open the test UI** in your browser: `http://localhost:8080/finance_api_test.html`
-- **To stop the server**: Press `Ctrl+C` in the server terminal, or open a second terminal and run `./stop_server.sh`.
+Download the project to a temporary directory that NGINX can read:
 
-> [!NOTE]
-> The first setup may take several minutes. macOS or Ubuntu may ask for your computer administrator password (`sudo`). On macOS, an existing protected MySQL installation may also require its MySQL root password.
-
----
-
-## 2. Daily Development Workflow
-
-Run the API with MySQL storage:
 ```bash
-./start_server.sh
-```
-- Automatically starts the MySQL service if stopped.
-- Connects using the dedicated course user (`ase230`), ensures `finance_db` and its tables exist, and preserves existing records.
-- `--pdo`, `--mysql`, and `--no-reset` remain accepted for compatibility.
-
-### Resetting Data Between Test Runs
-To reset the SQL data between test runs:
-```bash
-# Reset the MySQL database (finance_db); this deletes existing records:
-./reset_db.sh
+# mktemp replaces the Xs with random characters.
+WORKDIR=$(mktemp -d /tmp/finance-api.XXXXXX)
+chmod 755 "$WORKDIR"
+umask 022
+cd "$WORKDIR"
+git clone https://github.com/kidwella2/personal-finance-api.git
+cd personal-finance-api/code/api
 ```
 
-### Stopping Server and Background Services
-When finished working, stop the development server and background database service cleanly:
+Set up MySQL and create the tables:
+
 ```bash
-# Stop both PHP development server (port 8080) and MySQL service:
-./stop_server.sh
-
-# Stop only the PHP server (leaves MySQL running):
-./stop_server.sh --php
-
-# Stop only the MySQL service (leaves PHP running):
-./stop_server.sh --mysql
+bash ensure_install_packages.sh &&
+MYSQL_PWD=ase230pass mysql -u ase230 finance_db < schema.sql
 ```
 
 ---
 
-## 3. Testing the API
+## 2. Start the API
 
-Once the server is running at `http://localhost:8080`, test endpoints using either the browser UI or the automated test suite.
-
-To log in directly, send:
+Start PHP-FPM and copy the NGINX configuration:
 
 ```bash
-curl -X POST http://localhost:8080/login \
+PHP_VERSION=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
+sudo service "php${PHP_VERSION}-fpm" start
+# mktemp replaces the Xs with random characters.
+NGINX_CONFIG=$(mktemp /tmp/finance-nginx.XXXXXX.conf)
+cp ../nginx.conf "$NGINX_CONFIG"
+sed -i "s|^pid .*|pid $WORKDIR/nginx.pid;|" "$NGINX_CONFIG"
+```
+
+The next two commands print the paths you need for your computer:
+
+```bash
+pwd -P
+echo "/run/php/php${PHP_VERSION}-fpm.sock"
+```
+
+Open the copied configuration:
+
+```bash
+nano "$NGINX_CONFIG"
+```
+
+1. Find the `root` line. Replace the path inside the quotes with the first
+   path printed above. Keep the quotes and semicolon.
+2. Find the `fastcgi_pass` line. Replace the path after `unix:` with the
+   second path printed above. Keep `unix:` and the semicolon.
+3. Press **Ctrl+O**, then **Enter** to save. Press **Ctrl+X** to exit.
+
+Check the configuration and start NGINX:
+
+```bash
+sudo nginx -t -c "$NGINX_CONFIG" &&
+sudo nginx -c "$NGINX_CONFIG"
+```
+
+If the check reports an error, fix it before starting NGINX. If port 8080 is
+already in use, stop the application using it first.
+
+The configuration follows the ASE230
+[NGINX and PHP-FPM example](https://github.com/nkuase/ase230/blob/main/module1/code/5_Webserver_using_NGINX/nginx.conf).
+
+---
+
+## 3. Test the API
+
+### Test page
+
+1. Open [http://localhost:8080/finance_api_test.html](http://localhost:8080/finance_api_test.html)
+   in your browser. Do not open the HTML file directly.
+2. Click **POST /login** using the filled-in username and password.
+3. Click the other buttons to test the API. Results appear below each button.
+
+### Automated tests
+
+There is no separate unit-test suite. To run the API integration tests, return
+to the same terminal and run:
+
+```bash
+curl --fail -sS -X PUT http://127.0.0.1:8080/budgets/current \
+  -H "Authorization: Bearer john-demo-token" \
   -H "Content-Type: application/json" \
-  -d '{"username":"john","password":"Secret123"}'
+  -d '{"month":"2026-11","budget":3000}' &&
+cd ../api_tests/javascript &&
+NODE_OPTIONS=--dns-result-order=ipv4first npm test
 ```
 
-Use the returned `token` value on later requests:
+The first command sets the budget expected by the tests. The test summary
+appears in the terminal and in `test_results.txt`.
+
+### Stop the API
+
+When finished, run this command in the same terminal:
 
 ```bash
-curl http://localhost:8080/budgets/current \
-  -H "Authorization: Bearer YOUR_TOKEN"
+sudo nginx -s quit -c "$NGINX_CONFIG"
 ```
 
-When using NGINX with PHP-FPM, forward the Authorization header inside the PHP
-location so PHP can validate the bearer token:
+### Reset the database
 
-```nginx
-fastcgi_param HTTP_AUTHORIZATION $http_authorization;
-```
+To delete the API's saved data and start over:
 
-### Option A: Web Test UI (Browser)
-Open the visual test page in your web browser:
-```txt
-http://localhost:8080/finance_api_test.html
-```
-
-> [!CAUTION]
-> **Never open `finance_api_test.html` directly from your file manager (`file:///...`)!**
-> Browser security (CORS) treats local `file://` files as untrusted origins and may block requests to `http://localhost:8080`. You must open it through the HTTP server URL above.
-
-### Option B: Automated Node.js Test Runner
-From the `api/` directory, run the finance API tests:
 ```bash
-cd ../api_tests/javascript
-npm test
+cd "$WORKDIR/personal-finance-api/code/api"
+bash reset_db.sh
 ```
-The runner covers the finance endpoints, including validation failures and method restrictions, and prints its results to the terminal.
 
 ---
 
@@ -137,6 +165,7 @@ The runner covers the finance endpoints, including validation failures and metho
 The scripts in this directory provide repeatable setup automation without manual package management.
 
 ### `start_server.sh`
+- This optional script starts PHP's built-in server, not NGINX.
 - **Orchestrator**: Sources `ensure_install_packages.sh` to load environment variables and helper functions.
 - **Dependency Guard**: Calls `install_mac_packages` or `install_ubuntu_packages` to ensure required binaries are installed.
 - **Service & DB Guard**: Ensures MySQL daemon is running (`start_mysql`), ensures database/user exists (`configure_course_database`), and verifies connectivity (`verify_installation`).
@@ -149,6 +178,8 @@ The scripts in this directory provide repeatable setup automation without manual
 - **Safety**: Uses `set -euo pipefail` and explicit error checks on schema import. If database recreation fails, it exits with an error and never prints `Done.`.
 
 ### `stop_server.sh`
+- This script is not intended for NGINX and may kill processes on port 8080;
+  use the NGINX stop command above.
 - **Port Cleanup**: Uses `pkill -f "php -S.*8080"` and `lsof` to find and terminate processes listening on port 8080.
 - **Service Teardown**: Gracefully stops the MySQL daemon via Homebrew (`brew services stop mysql`) or system service (`service mysql stop`).
 
@@ -185,19 +216,14 @@ The scripts in this directory provide repeatable setup automation without manual
 
 Before considering reinstallation, check if your issue matches one of these common errors:
 
-- **`Permission denied: ./...sh`**: The shell scripts may need executable permissions. Run:
-  ```bash
-  chmod +x *.sh
-  ```
-- **`Address already in use` (Port 8080)**: A previous PHP server process is holding port 8080. Stop it with:
-  ```bash
-  ./stop_server.sh --php
-  ```
+- **`Address already in use` (Port 8080)**: Stop the application already using port 8080 before starting NGINX.
+- **Node.js cannot connect to localhost**: On Node.js 17 or newer, try
+  `NODE_OPTIONS=--dns-result-order=ipv4first npm test` to match NGINX's IPv4 listener.
 - **MySQL Connection / Credentials Error**: If the database service stopped or credentials fell out of sync, re-run:
   ```bash
-  ./ensure_install_packages.sh
+  bash ensure_install_packages.sh
   ```
-- **Web page does not load in browser**: Ensure the server is actively running (`./start_server.sh`) and navigate to `http://localhost:8080/finance_api_test.html`. Do not open the HTML file directly from your operating system's file manager (`file:///...`).
+- **Web page does not load in browser**: Ensure NGINX and PHP-FPM are running and navigate to `http://localhost:8080/finance_api_test.html`. Do not open the HTML file directly from your operating system's file manager (`file:///...`).
 - **If problems persist**: Only after the steps above fail should you consider the complete reinstallation below.
 
 ---
@@ -212,8 +238,7 @@ Before considering reinstallation, check if your issue matches one of these comm
 Use this script only if your PHP or MySQL installation is severely corrupted and you need to reset to a clean state.
 
 ```bash
-# 1. Stop any running PHP server first
-./stop_server.sh
+# 1. Stop NGINX using the command above and stop any PHP development server
 
 # 2. Run the interactive uninstaller
 ./ensure_delete_packages.sh
@@ -228,4 +253,4 @@ Use this script only if your PHP or MySQL installation is severely corrupted and
 - **Post-Deletion Verification**: Clears command cache (`hash -r`) and verifies that `php`, `mysql`, `mysqld`, and `mysqladmin` are no longer in `PATH`.
 - *(The `--yes` flag is reserved strictly for disposable CI/CD containers and virtual machines).*
 
-After deletion, run `./ensure_install_packages.sh` to perform a fresh Homebrew/APT-managed installation.
+After deletion, run `bash ensure_install_packages.sh` to perform a fresh Homebrew/APT-managed installation.
