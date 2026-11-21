@@ -11,9 +11,13 @@
 // Simple HTTP client using Node.js built-in modules
 const http = require('http');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const util = require('util');
 
 // Configuration
 const API_BASE_URL = 'http://localhost:8080';
+const RESULTS_FILE = path.join(__dirname, 'test_results.txt');
 let apiToken = '';
 const COLORS = {
     RESET: '\x1b[0m',
@@ -956,13 +960,32 @@ async function runAllTests() {
 
 // Command line interface
 if (require.main === module) {
+    const output = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    const captureOutput = (write) => (...args) => {
+        output.push(util.format(...args).replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, ''));
+        write.apply(console, args);
+    };
+
+    console.log = captureOutput(originalLog);
+    console.error = captureOutput(originalError);
+
     console.log(`${COLORS.CYAN}Simple REST API Testing Tool${COLORS.RESET}`);
     console.log(`${COLORS.YELLOW}Usage: node test_runner.js [--verbose]${COLORS.RESET}`);
+    console.log(`Test results will be saved to ${RESULTS_FILE}`);
     console.log('');
     
     runAllTests().catch(error => {
         console.error(`${COLORS.RED}Fatal error: ${error.message}${COLORS.RESET}`);
-        process.exit(1);
+        process.exitCode = 1;
+    }).then(() => {
+        try {
+            fs.writeFileSync(RESULTS_FILE, `${output.join('\n')}\n`, 'utf8');
+        } catch (error) {
+            originalError(`Failed to write test results to ${RESULTS_FILE}: ${error.message}`);
+            process.exitCode = 1;
+        }
     });
 }
 

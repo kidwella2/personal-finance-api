@@ -1,0 +1,105 @@
+Simple REST API Testing Tool
+Usage: node test_runner.js [--verbose]
+Test results will be saved to D:\NKU MASTERS\CSC 640\personal-finance-api\code\api_tests\javascript\test_results.txt
+
+🚀 Starting REST API Tests for Personal Finance API
+API Base URL: http://localhost:8080
+
+Testing server connection...
+✅ Server Connection: Server is responding correctly!
+
+Testing GET /budgets/current without a token...
+✅ Unauthorized Access: Correctly returned 401
+
+Testing POST /login...
+✅ Login: Received a non-empty bearer token
+
+Testing POST /login with incorrect credentials...
+✅ Login Failure: Correctly returned 401 with an error
+
+Testing GET /budgets/current...
+✅ Get Current Budget: Received November 2026 budget
+
+Testing GET /budgets/current with an invalid token...
+✅ Get Current Budget Unauthorized: Correctly returned 401 with an error
+
+Testing PUT /budgets/current...
+✅ Put Current Budget: Saved the November 2026 budget
+
+Testing PUT /budgets/current failures...
+✅ Put Current Budget Failures: Correctly rejected missing token and month
+
+Testing GET /budgets/recurring-items...
+✅ Get Recurring Items: Received recurring items
+
+Testing GET /budgets/recurring-items with an invalid token...
+✅ Get Recurring Items Unauthorized: Correctly returned 401
+
+Testing POST /budgets/recurring-items...
+✅ Create Recurring Item: Created item 1
+
+Testing POST /budgets/recurring-items failures...
+✅ Create Recurring Item Failures: Correctly rejected missing token and negative amount
+
+Testing DELETE /budgets/recurring-items/1...
+✅ Delete Recurring Item: Deleted item is no longer listed
+
+Testing DELETE /budgets/recurring-items failures...
+✅ Delete Recurring Item Failures: Correctly rejected missing token and unknown ID
+
+Testing GET /transactions...
+✅ Get Transactions: Received transactions
+
+Testing GET /transactions with an invalid token...
+✅ Get Transactions Unauthorized: Correctly returned 401
+
+Testing POST /transactions...
+✅ Create Transaction: Created transaction 1
+
+Testing POST /transactions failures...
+✅ Create Transaction Failures: Correctly rejected missing token and negative amount
+
+Testing DELETE /transactions/1...
+✅ Delete Transaction: Deleted transaction
+
+Testing DELETE /transactions failures...
+✅ Delete Transaction Failures: Correctly rejected missing token and unknown ID
+
+Testing GET /reports/monthly-spending...
+✅ Monthly Spending Report: Received numeric budgeted and transaction totals
+
+Testing monthly spending report failures...
+✅ Monthly Spending Report Failures: Correctly rejected invalid token and month
+
+Testing GET /teachers (unknown resource)...
+✅ Unknown Resource: Correctly returned 404
+
+Testing GET /budgets/recurring-items/abc (invalid id)...
+✅ Invalid ID: Correctly returned 400
+
+Testing POST /transactions with {} (missing fields)...
+✅ Missing Fields: Correctly returned 400
+
+Testing Malformed JSON...
+✅ Malformed JSON: Got 400 with an error response
+
+Testing Array Body...
+✅ Array Body: Got 400 with an error response
+
+Testing Invalid Field Values...
+✅ Invalid Field Values: Got 400 with an error response
+
+Testing Incomplete PUT...
+✅ Incomplete PUT: Got 400 with an error response
+
+Testing POST /transactions/1 (method not allowed)...
+✅ Method Not Allowed (item): Got 405 with Allow: DELETE
+
+Testing PUT /transactions (method not allowed)...
+✅ Method Not Allowed (collection): Got 405 with Allow: GET, POST
+
+📊 Test Summary
+Total Tests: 31
+Passed: 31
+Failed: 0
+🎉 All tests passed!
