@@ -176,12 +176,24 @@ Invalid or missing month returns `400`.
 
 ---
 
-## Calling a protected endpoint
+## Request/response examples
 
 ```bash
-curl http://localhost:8080/budgets/current \
-  -H "Authorization: Bearer john-demo-token"
+curl -i -X POST http://localhost:8080/transactions \
+  -H "Authorization: Bearer john-demo-token" \
+  -H "Content-Type: application/json" \
+  -d '{"month":"2026-01","name":"gas","amount":40.87}'
 ```
 
-Missing or invalid tokens return `401` with `{"error":"..."}`. Unsupported
-methods return `405`; unknown paths return `404`.
+**Success:** `201 Created` · `{"id":1}` (the assigned ID varies).
+
+**Failed request:**
+
+```bash
+curl -i -X POST http://localhost:8080/transactions \
+  -H "Authorization: Bearer john-demo-token" \
+  -H "Content-Type: application/json" \
+  -d '{"month":"2026-01","name":"gas","amount":-1}'
+```
+
+**Failure:** `400 Bad Request` · `{"error":"amount cannot be negative"}`
