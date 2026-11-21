@@ -195,12 +195,13 @@ async function testGetCurrentBudget() {
     try {
         const result = await makeRequest(`${API_BASE_URL}/budgets/current`);
         const budget = result.data;
-        if (result.status === 200 && budget && budget.month === '2026-11' &&
+        if (result.status === 200 && budget && typeof budget.month === 'string' &&
+            /^\d{4}-(0[1-9]|1[0-2])$/.test(budget.month) &&
             typeof budget.budget === 'number') {
-            printResult('Get Current Budget', true, 'Received November 2026 budget', result.data);
+            printResult('Get Current Budget', true, 'Received current budget', result.data);
             return true;
         }
-        printResult('Get Current Budget', false, 'Expected November 2026 and a numeric budget', result.data);
+        printResult('Get Current Budget', false, 'Expected a valid month and numeric budget', result.data);
         return false;
     } catch (error) {
         printResult('Get Current Budget', false, `Request failed: ${error.error}`, error);

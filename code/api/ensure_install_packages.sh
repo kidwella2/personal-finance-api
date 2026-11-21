@@ -62,22 +62,24 @@ install_homebrew() {
 
 install_mac_packages() {
     install_homebrew
-    if ! brew list --versions php >/dev/null 2>&1; then
-        echo "Installing PHP via Homebrew..."
-        brew install php
-    fi
-    if ! brew list --versions mysql >/dev/null 2>&1; then
-        echo "Installing MySQL via Homebrew..."
-        brew install mysql
-    fi
+    local package
+    for package in php mysql nginx node; do
+        if ! brew list --versions "$package" >/dev/null 2>&1; then
+            echo "Installing $package via Homebrew..."
+            brew install "$package"
+        fi
+    done
 }
 
 install_ubuntu_packages() {
     if ! command -v php >/dev/null 2>&1 || ! command -v mysql >/dev/null 2>&1 || \
-       ! dpkg -s php-mysql >/dev/null 2>&1 || ! dpkg -s mysql-server >/dev/null 2>&1; then
-        echo "Installing packages via APT (php-cli, php-mysql, mysql-server, default-mysql-client)..."
+       ! command -v nginx >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1 || \
+       ! command -v curl >/dev/null 2>&1 || \
+       ! dpkg -s php-fpm >/dev/null 2>&1 || ! dpkg -s php-mysql >/dev/null 2>&1 || \
+       ! dpkg -s mysql-server >/dev/null 2>&1; then
+        echo "Installing PHP, NGINX, Node.js, and MySQL via APT..."
         run_sudo apt-get update
-        run_sudo apt-get install -y php-cli php-mysql mysql-server default-mysql-client
+        run_sudo apt-get install -y php-cli php-fpm php-mysql nginx nodejs curl mysql-server default-mysql-client
     fi
 }
 
@@ -117,23 +119,27 @@ start_mysql() {
 stop_mysql() {
     echo "Stopping MySQL service..."
     if [ "$PLATFORM" = "mac" ]; then
-        brew services stop mysql 2>/dev/null || true
+        brew services stop mysql
     else
-        run_sudo service mysql stop >/dev/null 2>&1 || run_sudo systemctl stop mysql >/dev/null 2>&1 || true
+        run_sudo service mysql stop || run_sudo systemctl stop mysql
     fi
 }
 
-stop_php() {
-    local port="${1:-8080}"
-    echo "Stopping PHP server on port $port..."
-    pkill -f "php -S.*$port" 2>/dev/null || true
-    if command -v lsof >/dev/null 2>&1; then
-        local pids
-        pids=$(lsof -t -i:"$port" 2>/dev/null || true)
-        if [ -n "$pids" ]; then
-            kill "$pids" 2>/dev/null || true
-        fi
-    fi
+runtime_directory() {
+    local api_dir="$1"
+    local checksum
+    checksum="$(printf '%s' "$api_dir" | cksum | awk '{print $1}')"
+    printf '/tmp/finance-api-%s-%s\n' "$(id -u)" "$checksum"
+}
+
+process_matches() {
+    local pid="$1" config="$2" args owner
+    case "$pid" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    args="$(ps -p "$pid" -o args=)" || return 1
+    owner="$(ps -p "$pid" -o uid= | tr -d '[:space:]')" || return 1
+    [ "$owner" = "$(id -u)" ] && [[ "$args" == *"$config"* ]]
 }
 
 configure_course_database() {
@@ -218,6 +224,8 @@ main() {
     start_mysql
     configure_course_database
     verify_installation
+    MYSQL_PWD="$COURSE_PASS" mysql -u "$COURSE_USER" "$COURSE_DB" < "$(dirname "$0")/schema.sql"
+    echo "Setup complete."
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then

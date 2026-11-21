@@ -1,5 +1,8 @@
 # Personal Finance API: Setup & Automation Guide
 
+Run the commands below from the `personal-finance-api` folder (the repository
+root). On Windows, use an Ubuntu WSL terminal for the scripts.
+
 An educational REST API written in PHP backed by MySQL via PDO.
 
 ```txt
@@ -32,86 +35,37 @@ response includes the demo `expires_in` field.
 
 ## 1. Set up
 
-Use Ubuntu 24.04 or Ubuntu 24.04 on WSL2. Open a terminal and keep it open
-until you finish the steps below. Run the commands in each box in order. If a
-command reports an error, fix it before continuing.
-
-These steps use a MySQL database named `finance_db` and an account named
-`ase230`. The setup can change that account's password, and the tests change
-database data. Use a separate Ubuntu environment if you already use them.
-
-Install the required software:
+Use macOS, Ubuntu 22.04/24.04, or Ubuntu on WSL2. Open a terminal as your
+regular user. If you haven't cloned the repository yet, run:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y git nodejs npm nginx php-cli php-fpm php-mysql mysql-server default-mysql-client nano curl
-```
-
-Download the project to a temporary directory that NGINX can read:
-
-```bash
-# mktemp replaces the Xs with random characters.
-WORKDIR=$(mktemp -d /tmp/finance-api.XXXXXX)
-chmod 755 "$WORKDIR"
-umask 022
-cd "$WORKDIR"
 git clone https://github.com/kidwella2/personal-finance-api.git
-cd personal-finance-api/code/api
+cd personal-finance-api
 ```
 
-Set up MySQL and create the tables:
+From the repository root, run the setup script:
 
 ```bash
-bash ensure_install_packages.sh &&
-MYSQL_PWD=ase230pass mysql -u ase230 finance_db < schema.sql
+bash code/api/ensure_install_packages.sh
 ```
+
+The script installs the required tools, starts MySQL, and creates the database
+tables. It may ask for your administrator password or MySQL root password.
+It uses the `finance_db` database and `ase230` account; it may change that
+account's password.
 
 ---
 
 ## 2. Start the API
 
-Start PHP-FPM and copy the NGINX configuration:
+From the repository root, run:
 
 ```bash
-PHP_VERSION=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
-sudo service "php${PHP_VERSION}-fpm" start
-# mktemp replaces the Xs with random characters.
-NGINX_CONFIG=$(mktemp /tmp/finance-nginx.XXXXXX.conf)
-cp ../nginx.conf "$NGINX_CONFIG"
-sed -i "s|^pid .*|pid $WORKDIR/nginx.pid;|" "$NGINX_CONFIG"
+bash code/api/start_server.sh
 ```
 
-The next two commands print the paths you need for your computer:
-
-```bash
-pwd -P
-echo "/run/php/php${PHP_VERSION}-fpm.sock"
-```
-
-Open the copied configuration:
-
-```bash
-nano "$NGINX_CONFIG"
-```
-
-1. Find the `root` line. Replace the path inside the quotes with the first
-   path printed above. Keep the quotes and semicolon.
-2. Find the `fastcgi_pass` line. Replace the path after `unix:` with the
-   second path printed above. Keep `unix:` and the semicolon.
-3. Press **Ctrl+O**, then **Enter** to save. Press **Ctrl+X** to exit.
-
-Check the configuration and start NGINX:
-
-```bash
-sudo nginx -t -c "$NGINX_CONFIG" &&
-sudo nginx -c "$NGINX_CONFIG"
-```
-
-If the check reports an error, fix it before starting NGINX. If port 8080 is
-already in use, stop the application using it first.
-
-The configuration follows the ASE230
-[NGINX and PHP-FPM example](https://github.com/nkuase/ase230/blob/main/module1/code/5_Webserver_using_NGINX/nginx.conf).
+The script starts NGINX and PHP-FPM. If port 8080 is already in use, stop the
+application using it and try again.
 
 ---
 
@@ -127,26 +81,22 @@ The configuration follows the ASE230
 ### Automated tests
 
 There is no separate unit-test suite. To run the API integration tests, return
-to the same terminal and run:
+to the repository root and run:
 
 ```bash
-curl --fail -sS -X PUT http://127.0.0.1:8080/budgets/current \
-  -H "Authorization: Bearer john-demo-token" \
-  -H "Content-Type: application/json" \
-  -d '{"month":"2026-11","budget":3000}' &&
-cd ../api_tests/javascript &&
-NODE_OPTIONS=--dns-result-order=ipv4first npm test
+node code/api_tests/javascript/test_runner.js
 ```
 
-The first command sets the budget expected by the tests. The test summary
-appears in the terminal and in `test_results.txt`.
+On Windows, the same command is `node "code\api_tests\javascript\test_runner.js"`.
+The tests change database data. Results appear in the terminal and in
+`code/api_tests/javascript/test_results.txt`.
 
 ### Stop the API
 
-When finished, run this command in the same terminal:
+From the repository root, run:
 
 ```bash
-sudo nginx -s quit -c "$NGINX_CONFIG"
+bash code/api/stop_server.sh
 ```
 
 ### Reset the database
@@ -154,55 +104,12 @@ sudo nginx -s quit -c "$NGINX_CONFIG"
 To delete the API's saved data and start over:
 
 ```bash
-cd "$WORKDIR/personal-finance-api/code/api"
-bash reset_db.sh
+bash code/api/reset_db.sh
 ```
 
 ---
 
-## 4. How the Automation Scripts Work
-
-The scripts in this directory provide repeatable setup automation without manual package management.
-
-### `start_server.sh`
-- This optional script starts PHP's built-in server, not NGINX.
-- **Orchestrator**: Sources `ensure_install_packages.sh` to load environment variables and helper functions.
-- **Dependency Guard**: Calls `install_mac_packages` or `install_ubuntu_packages` to ensure required binaries are installed.
-- **Service & DB Guard**: Ensures MySQL daemon is running (`start_mysql`), ensures database/user exists (`configure_course_database`), and verifies connectivity (`verify_installation`).
-- **Safety**: Uses `set -euo pipefail` to halt immediately if database reset or setup fails.
-- **Runtime**: Runs `php -S localhost:8080`.
-
-### `reset_db.sh`
-- **State Hygiene**: Clears stale data to prevent failures caused by records from previous test runs.
-- **MySQL**: Drops and recreates `finance_db`, then imports the finance tables from `schema.sql`.
-- **Safety**: Uses `set -euo pipefail` and explicit error checks on schema import. If database recreation fails, it exits with an error and never prints `Done.`.
-
-### `stop_server.sh`
-- This script is not intended for NGINX and may kill processes on port 8080;
-  use the NGINX stop command above.
-- **Port Cleanup**: Uses `pkill -f "php -S.*8080"` and `lsof` to find and terminate processes listening on port 8080.
-- **Service Teardown**: Gracefully stops the MySQL daemon via Homebrew (`brew services stop mysql`) or system service (`service mysql stop`).
-
-### `ensure_install_packages.sh`
-- **Platform Detection**: Identifies macOS (`Darwin`) and evaluates Homebrew shellenv (`/opt/homebrew` or `/usr/local`). Identifies Ubuntu Linux / WSL2 via `/etc/os-release` (`ID=ubuntu`).
-- **Batch Installation**:
-  - macOS: Checks `php` and `mysql` separately with `brew list --versions`, then installs whichever formula is missing.
-  - Ubuntu: Uses `apt-get install -y php-cli php-mysql mysql-server default-mysql-client`.
-- **Service Health (`is_mysql_running`)**: Uses `mysqladmin ping` exit code to confirm MySQL daemon responsiveness independently from user login.
-- **Dedicated Course Account (`configure_course_database`)**:
-  - Creates database `finance_db` and user `'ase230'@'localhost'`.
-  - Uses `ALTER USER` to synchronize the password (`ase230pass`) and `GRANT` to synchronize permissions on `finance_db.*`.
-  - **Does not modify system `root`**, protecting existing personal projects and system databases.
-- **Strict 4-Step Verification (`verify_installation`)**:
-  Fails fast with exit code `1` if any check fails:
-  1. `php -v` (PHP CLI execution)
-  2. `class_exists('PDO')` (PDO extension available)
-  3. `extension_loaded('pdo_mysql')` (PDO MySQL driver loaded)
-  4. `mysql -u ase230 finance_db -e "SELECT 1;"` (database connectivity verified)
-
----
-
-## 5. Security & Configuration Notes
+## 4. Security & Configuration Notes
 
 - **Dedicated User**: The application uses `'ase230'@'localhost'` with password `'ase230pass'`. This configuration is intended **strictly for local educational lab environments** for ease of learning; it should never be used in a production environment.
 - **Password Handling**: Scripts use `MYSQL_PWD` instead of placing the password directly in command-line arguments. Note that environment variables may still be visible in shared process environments, which is acceptable for local single-user development.
@@ -210,18 +117,16 @@ The scripts in this directory provide repeatable setup automation without manual
 
 ---
 
-## 6. Troubleshooting & Complete Reinstallation
+## 5. Troubleshooting & Complete Reinstallation
 
 ### Common Issues & Quick Fixes
 
 Before considering reinstallation, check if your issue matches one of these common errors:
 
 - **`Address already in use` (Port 8080)**: Stop the application already using port 8080 before starting NGINX.
-- **Node.js cannot connect to localhost**: On Node.js 17 or newer, try
-  `NODE_OPTIONS=--dns-result-order=ipv4first npm test` to match NGINX's IPv4 listener.
 - **MySQL Connection / Credentials Error**: If the database service stopped or credentials fell out of sync, re-run:
   ```bash
-  bash ensure_install_packages.sh
+  bash code/api/ensure_install_packages.sh
   ```
 - **Web page does not load in browser**: Ensure NGINX and PHP-FPM are running and navigate to `http://localhost:8080/finance_api_test.html`. Do not open the HTML file directly from your operating system's file manager (`file:///...`).
 - **If problems persist**: Only after the steps above fail should you consider the complete reinstallation below.
@@ -241,7 +146,7 @@ Use this script only if your PHP or MySQL installation is severely corrupted and
 # 1. Stop NGINX using the command above and stop any PHP development server
 
 # 2. Run the interactive uninstaller
-./ensure_delete_packages.sh
+bash code/api/ensure_delete_packages.sh
 ```
 
 - **Safety Prompt**: In interactive mode, the script requires you to type `DELETE` in all capital letters before proceeding.
@@ -253,4 +158,4 @@ Use this script only if your PHP or MySQL installation is severely corrupted and
 - **Post-Deletion Verification**: Clears command cache (`hash -r`) and verifies that `php`, `mysql`, `mysqld`, and `mysqladmin` are no longer in `PATH`.
 - *(The `--yes` flag is reserved strictly for disposable CI/CD containers and virtual machines).*
 
-After deletion, run `bash ensure_install_packages.sh` to perform a fresh Homebrew/APT-managed installation.
+After deletion, run `bash code/api/ensure_install_packages.sh` to perform a fresh Homebrew/APT-managed installation.
