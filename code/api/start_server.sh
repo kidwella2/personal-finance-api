@@ -4,13 +4,10 @@ cd "$(dirname "$0")"
 
 source "$(dirname "$0")/ensure_install_packages.sh"
 
-STORAGE="json"
-RESET=true
-
 for arg in "$@"; do
     case "$arg" in
-        --pdo|--mysql) STORAGE="pdo" ;;
-        --no-reset)    RESET=false ;;
+        --pdo|--mysql|--no-reset) ;;
+        *) echo "ERROR: Unknown argument: $arg" >&2; exit 1 ;;
     esac
 done
 
@@ -20,34 +17,20 @@ else
     install_ubuntu_packages
 fi
 
-if [ "$STORAGE" = "pdo" ]; then
-    start_mysql
-    configure_course_database
-    verify_installation
-    if [ "$RESET" = true ]; then
-        ./reset_db.sh --mysql || exit 1
-    else
-        export MYSQL_PWD="$COURSE_PASS"
-        mysql -u "$COURSE_USER" "$COURSE_DB" < schema.sql || {
-            echo "ERROR: Failed to ensure database schema for '$COURSE_DB'." >&2
-            exit 1
-        }
-    fi
-else
-    command -v php >/dev/null 2>&1 || { echo "ERROR: PHP is required." >&2; exit 1; }
-    if [ "$RESET" = true ]; then
-        ./reset_db.sh || exit 1
-    else
-        mkdir -p data
-        [ ! -f data/finance.json ] && echo '[]' > data/finance.json
-    fi
-fi
+start_mysql
+configure_course_database
+verify_installation
+export MYSQL_PWD="$COURSE_PASS"
+mysql -u "$COURSE_USER" "$COURSE_DB" < schema.sql || {
+    echo "ERROR: Failed to ensure database schema for '$COURSE_DB'." >&2
+    exit 1
+}
 
 echo "=========================================="
-echo "Starting Finance API ($STORAGE mode)"
+echo "Starting Finance API (MySQL)"
 echo "URL:     http://localhost:8080/"
 echo "Test UI: http://localhost:8080/finance_api_test.html"
 echo "         (Access via HTTP; NEVER open as file://)"
 echo "=========================================="
 
-FINANCE_STORAGE="$STORAGE" exec php -S localhost:8080
+exec php -S localhost:8080

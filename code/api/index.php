@@ -15,10 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$storage = getenv('FINANCE_STORAGE') ?: 'json';
-if ($storage === 'pdo') {
-    require_once __DIR__ . '/database.php';
-}
+require_once __DIR__ . '/database.php';
 
 // Parse the URL path
 $method = $_SERVER['REQUEST_METHOD'];
@@ -79,7 +76,7 @@ if ($resource === 'budgets') {
     $recurring_item_id = null;
     if (count($segments) === 2 && $segments[1] === 'current') {
         $allowed = ['GET', 'PUT'];
-        $budget_handler = $storage === 'pdo' ? 'budgets_pdo.php' : 'budgets.php';
+        $budget_handler = 'budgets_pdo.php';
     } elseif (count($segments) >= 2 && count($segments) <= 3 && $segments[1] === 'recurring-items') {
         if (count($segments) === 3) {
             if (!ctype_digit($segments[2])) {
@@ -90,7 +87,7 @@ if ($resource === 'budgets') {
             $recurring_item_id = (int)$segments[2];
         }
         $allowed = $recurring_item_id === null ? ['GET', 'POST'] : ['DELETE'];
-        $budget_handler = $storage === 'pdo' ? 'recurring_items_pdo.php' : 'recurring_items.php';
+        $budget_handler = 'recurring_items_pdo.php';
     } else {
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'Resource not found']);
@@ -126,7 +123,7 @@ if ($resource === 'transactions') {
     }
 
     requireAuth();
-    require __DIR__ . '/' . ($storage === 'pdo' ? 'transactions_pdo.php' : 'transactions.php');
+    require __DIR__ . '/transactions_pdo.php';
     exit;
 }
 
@@ -145,7 +142,7 @@ if ($resource === 'reports') {
     }
 
     requireAuth();
-    require __DIR__ . '/' . ($storage === 'pdo' ? 'monthly_spending_pdo.php' : 'monthly_spending.php');
+    require __DIR__ . '/monthly_spending_pdo.php';
     exit;
 }
 

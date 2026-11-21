@@ -1,10 +1,9 @@
 # Personal Finance API: Setup & Automation Guide
 
-An educational REST API written in PHP demonstrating how a consistent HTTP interface can be backed by two interchangeable storage implementations: **JSON flat-file** or **MySQL via PDO**.
+An educational REST API written in PHP backed by MySQL via PDO.
 
 ```txt
-HTTP Request ───► index.php ──┬─ JSON endpoints ── data/*.json
-                              └─ PDO endpoints ──── MySQL (finance_db)
+HTTP Request ───► index.php ───► PDO endpoints ───► MySQL (finance_db)
 ```
 
 ### API Endpoints
@@ -42,7 +41,7 @@ cd api
 # One-time setup: install packages, configure database, and verify tools
 ./ensure_install_packages.sh
 
-# Start the API server in default JSON mode
+# Start the API server
 ./start_server.sh
 ```
 
@@ -57,44 +56,20 @@ cd api
 
 ## 2. Daily Development Workflow
 
-Choose either storage mode to run your application:
-
-### Option A: Run with JSON Storage
+Run the API with MySQL storage:
 ```bash
 ./start_server.sh
 ```
-- Uses the PHP endpoints and stores finance data in `data/current_budget.json`, `data/recurring_items.json`, and `data/transactions.json`.
-- To preserve existing records across restarts:
-  ```bash
-  ./start_server.sh --no-reset
-  ```
-
-### Option B: Run with MySQL/PDO Storage
-```bash
-./start_server.sh --pdo
-# or:
-./start_server.sh --mysql
-```
 - Automatically starts the MySQL service if stopped.
-- Connects using the dedicated course user (`ase230`), recreates a clean `finance_db` database, and imports table structures from `schema.sql`.
-- Switches `FINANCE_STORAGE=pdo` and routes requests through the matching `*_pdo.php` finance endpoints.
-- To preserve existing database records across restarts:
-  ```bash
-  ./start_server.sh --pdo --no-reset
-  ```
-
-> [!NOTE]
-> **Safe `--no-reset` Handling**: You can safely pass `--no-reset` at any time, even on your very first run. In PDO mode, the script ensures the finance tables exist through `schema.sql` and preserves existing records. In JSON mode, finance data remains in its three data files.
+- Connects using the dedicated course user (`ase230`), ensures `finance_db` and its tables exist, and preserves existing records.
+- `--pdo`, `--mysql`, and `--no-reset` remain accepted for compatibility.
 
 ### Resetting Data Between Test Runs
 To reset the SQL data between test runs:
 ```bash
-# Reset the MySQL database (finance_db):
-./reset_db.sh --mysql
+# Reset the MySQL database (finance_db); this deletes existing records:
+./reset_db.sh
 ```
-
-JSON finance data is stored in `data/current_budget.json`,
-`data/recurring_items.json`, and `data/transactions.json`.
 
 ### Stopping Server and Background Services
 When finished working, stop the development server and background database service cleanly:
@@ -164,13 +139,12 @@ The scripts in this directory provide repeatable setup automation without manual
 ### `start_server.sh`
 - **Orchestrator**: Sources `ensure_install_packages.sh` to load environment variables and helper functions.
 - **Dependency Guard**: Calls `install_mac_packages` or `install_ubuntu_packages` to ensure required binaries are installed.
-- **Service & DB Guard**: In PDO mode, ensures MySQL daemon is running (`start_mysql`), ensures database/user exists (`configure_course_database`), and verifies connectivity (`verify_installation`).
+- **Service & DB Guard**: Ensures MySQL daemon is running (`start_mysql`), ensures database/user exists (`configure_course_database`), and verifies connectivity (`verify_installation`).
 - **Safety**: Uses `set -euo pipefail` to halt immediately if database reset or setup fails.
 - **Runtime**: Runs `php -S localhost:8080`.
 
 ### `reset_db.sh`
 - **State Hygiene**: Clears stale data to prevent failures caused by records from previous test runs.
-- **JSON**: JSON finance records are stored in the three finance data files.
 - **MySQL**: Drops and recreates `finance_db`, then imports the finance tables from `schema.sql`.
 - **Safety**: Uses `set -euo pipefail` and explicit error checks on schema import. If database recreation fails, it exits with an error and never prints `Done.`.
 
